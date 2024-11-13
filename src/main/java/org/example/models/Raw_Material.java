@@ -10,10 +10,9 @@ public class Raw_Material {
     private int price;
 
     public void addRawMaterial(Connection connection, Scanner scanner) throws SQLException {
-        // Prompt the user for input
         System.out.print("Enter Supplier ID: ");
         int supplierId = scanner.nextInt();
-        scanner.nextLine();  // Consume newline
+        scanner.nextLine();
 
         System.out.print("Enter Name: ");
         String name = scanner.nextLine();
@@ -23,15 +22,22 @@ public class Raw_Material {
 
         System.out.print("Enter Quantity: ");
         int quantity = scanner.nextInt();
-        scanner.nextLine();  // Consume newline
+        scanner.nextLine();
 
-        // Set the class attributes for raw material
-        this.name = name;
-        this.quantity = quantity;
-        this.supplierId = supplierId;
-        this.price = price;
+        String checkSupplierQuery = "SELECT 1 FROM suppliers WHERE id = ?";
+        try (PreparedStatement checkStmt = connection.prepareStatement(checkSupplierQuery)) {
+            checkStmt.setInt(1, supplierId);
+            try (ResultSet resultSet = checkStmt.executeQuery()) {
+                if (!resultSet.next()) {
+                    System.out.println("Supplier with ID " + supplierId + " does not exist. Cannot add raw material.");
+                    return;
+                }
+            }
+        } catch (SQLException e) {
+            System.out.println("Error checking supplier existence: " + e.getMessage());
+            throw e;
+        }
 
-        // SQL query for inserting raw material
         String insertQuery = "INSERT INTO raw_materials (name, quantity, supplier_id, price) VALUES (?, ?, ?, ?)";
 
         // Ensure table exists, this should ideally be done once during setup, not every time a new material is added
@@ -56,7 +62,6 @@ public class Raw_Material {
         }
     }
 
-    // Method to create the table if it does not already exist
     private void createTableIfNotExists(Connection connection) {
         String createTableQuery = "CREATE TABLE IF NOT EXISTS raw_materials (" +
                 "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
@@ -69,8 +74,53 @@ public class Raw_Material {
         try (Statement stmt = connection.createStatement()) {
             stmt.executeUpdate(createTableQuery);
         } catch (SQLException e) {
-            System.out.println("Error creating table: " + e.getMessage());
+            System.out.println("Error creating Raw Material's table");
         }
     }
 
+    public void deleteRawMaterial(Connection connection, Scanner scanner) throws SQLException {
+        System.out.print("Enter Supplier ID: ");
+        int SupplierId = scanner.nextInt();
+        scanner.nextLine();
+
+        System.out.print("Enter Raw Material ID: ");
+        int RawMaterialId = scanner.nextInt();
+        scanner.nextLine();
+
+        try (PreparedStatement stmt = connection.prepareStatement("DELETE FROM raw_materials WHERE supplier_id = ? AND id = ?")) {
+            stmt.setInt(1, SupplierId);
+            stmt.setInt(2, RawMaterialId);
+            int rowsDeleted = stmt.executeUpdate();
+            if (rowsDeleted > 0) {
+                System.out.println("Raw material deleted successfully.");
+            } else {
+                System.out.println("No matching raw material found.");
+            }
+        }catch (SQLException e) {
+            System.out.println("Error deleting raw material.");
+        }
+    }
+    public void findAll(Connection connection) throws SQLException {
+        String selectAllQuery = "SELECT * FROM  raw_materials";
+
+        try (Statement stmt = connection.createStatement();
+             ResultSet rs = stmt.executeQuery(selectAllQuery)) {
+            System.out.println("ID\tName\t\tSupplier ID\t\tPrice\tQuantity");
+            System.out.println("------------------------------");
+
+            while (rs.next()) {
+                int id = rs.getInt("id");
+                String name = rs.getString("name");
+                String supplierId = rs.getString("supplier_id");
+                int price = rs.getInt("price");
+                int quantity = rs.getInt("quantity");
+
+                System.out.println(id + "\t" + name + "\t" + supplierId + "\t" + price + "\t" + quantity);
+            }
+
+        } catch (SQLException e) {
+            System.out.println("Error fetching users: " + e.getMessage());
+            throw e;
+        }
+    }
 }

@@ -42,21 +42,22 @@ public class Main {
                             main.RunSupplier(connection,scanner);
                             break;
 
-                        case '2': // '2' for Receiver
+                        case '2':
                             System.out.println("You selected Receiver.");
                             main.RunReceiver(connection,scanner);
                             break;
 
-                        case '3': // '3' for RawMaterial
+                        case '3':
                             System.out.println("You selected RawMaterial.");
                             main.RunRawMaterial(connection,scanner);
                             break;
 
-                        case '4': // '4' for Item
+                        case '4':
                             System.out.println("You selected Item.");
+                            main.RunItems(connection,scanner);
                             break;
 
-                        case '5': // '5' for AddOrder
+                        case '5':
                             System.out.println("You selected AddOrder.");
                             break;
 
@@ -220,6 +221,22 @@ public class Main {
                                 System.out.println("Error! Adding Supplier");
                             }
                             break;
+                        case '2':
+                            System.out.println("You selected Delete Raw Material.");
+                            try {
+                                rawMaterial.deleteRawMaterial(connection,scanner);
+                            }catch (SQLException e){
+                                System.out.println("Error! Deleting Raw Material.");
+                            }
+                            break;
+                        case '3':
+                            System.out.println("You selected Raw Materials.");
+                            try {
+                                rawMaterial.findAll(connection);
+                            }catch (SQLException e){
+                                System.out.println("Error! Getting Raw Material.");
+                            }
+                            break;
                         default:
                             System.out.println("Invalid choice. Please enter a number between 1 and 5 or press 'Esc' to exit.");
                             break;
@@ -232,5 +249,47 @@ public class Main {
 
             }
         }
+        public void RunItems(Connection connection,Scanner scanner){
+        int userInput = -1;
+        Items item = new Items();
+
+        while (true) {
+            System.out.println("Choose an option:");
+            System.out.println("1. Add Item");
+//            System.out.println("2. Delete Item");
+//            System.out.println("3. Items");
+            System.out.println("Press 'Esc' to Exit");
+
+            try {
+                System.out.print("Enter your choice (or press 'Esc' to exit): ");
+                userInput = System.in.read();
+                if (userInput == 27 || userInput == 101) {
+                    scanner.nextLine();
+                    System.out.println("Exiting...");
+                    break;
+                }
+                scanner.nextLine();
+                switch (userInput) {
+                    case '1':
+                        System.out.println("You selected Add Raw Material.");
+                        try{
+                            item.addItem(connection,scanner);
+                        }
+                        catch (SQLException e){
+                            System.out.println("Error! Adding Supplier");
+                        }
+                        break;
+                    default:
+                        System.out.println("Invalid choice. Please enter a number between 1 and 5 or press 'Esc' to exit.");
+                        break;
+                }
+
+            } catch (IOException e) {
+                System.out.println("An error occurred while reading input.");
+            }
+
+
+        }
+    }
 }
 
