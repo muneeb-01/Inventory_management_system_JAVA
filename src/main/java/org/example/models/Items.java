@@ -122,4 +122,5 @@ public class Items {
         }
 
     }
+    public void findAll(Connection connection){}
 }

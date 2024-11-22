@@ -61,7 +61,6 @@ public class Raw_Material {
             throw e;  // Propagate the exception for further handling
         }
     }
-
     private void createTableIfNotExists(Connection connection) {
         String createTableQuery = "CREATE TABLE IF NOT EXISTS raw_materials (" +
                 "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
@@ -77,7 +76,6 @@ public class Raw_Material {
             System.out.println("Error creating Raw Material's table");
         }
     }
-
     public void deleteRawMaterial(Connection connection, Scanner scanner) throws SQLException {
         System.out.print("Enter Supplier ID: ");
         int SupplierId = scanner.nextInt();
