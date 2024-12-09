@@ -13,7 +13,7 @@ public class Main {
         Connection connection = con.getConnection();
         runMainMenu(connection);
     }
-    // method for the main menu logic
+
     static public void runMainMenu(Connection connection) {
         Scanner scanner = new Scanner(System.in);
         int userInput;
@@ -24,7 +24,7 @@ public class Main {
             try {
                 System.out.print("Enter your choice (or press 'Esc' to exit): ");
                 userInput = System.in.read();
-                if (userInput == 27 || userInput == 101) { // 'Esc' key or 'e' to exit
+                if (userInput == 27 || userInput == 101) {
                     scanner.nextLine();
                     System.out.println("Exiting...");
                     break;
@@ -51,11 +51,10 @@ public class Main {
             case '2': main.runEntityMenu(new Receiver(), "Receiver", connection, scanner); break;
             case '3': main.runEntityMenu(new Raw_Material(), "Raw Material", connection, scanner); break;
             case '4': main.runEntityMenu(new Items(), "Item", connection, scanner); break;
-            case '5': System.out.println("You selected AddOrder."); break;
+            case '5': main.runEntityMenu(new Order(), "Order", connection, scanner); break;
             default: System.out.println("Invalid choice. Please enter a valid option or press 'Esc' to exit.");
         }
     }
-    // method to handle CRUD operations for different entities
     private void runEntityMenu(Object entity, String entityName, Connection connection, Scanner scanner) {
         int userInput;
 
@@ -104,6 +103,8 @@ public class Main {
             ((Raw_Material) entity).addRawMaterial(connection, scanner);
         } else if (entity instanceof Items) {
             ((Items) entity).addItem(connection, scanner);
+        }else if (entity instanceof Order) {
+            ((Order) entity).addOrder(connection,scanner);
         }
     }
     private void deleteEntity(Object entity, Connection connection, Scanner scanner) throws SQLException {
@@ -113,6 +114,10 @@ public class Main {
             ((Receiver) entity).DeleteUser(connection, scanner);
         } else if (entity instanceof Raw_Material) {
             ((Raw_Material) entity).deleteRawMaterial(connection, scanner);
+        } else if (entity instanceof Items) {
+            ((Items) entity).deleteItems(connection, scanner);
+        } else if (entity instanceof Order) {
+            ((Order) entity).deleteOrder(connection,scanner);
         }
     }
     private void viewAllEntities(Object entity, Connection connection) throws SQLException {
@@ -124,6 +129,8 @@ public class Main {
             ((Raw_Material) entity).findAll(connection);
         } else if (entity instanceof Items) {
             ((Items) entity).findAll(connection);
+        } else if (entity instanceof Order) {
+            ((Order) entity).displayOrders(connection);
         }
     }
 }

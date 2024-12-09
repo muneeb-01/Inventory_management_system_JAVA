@@ -13,7 +13,6 @@ public class Items {
         return itemId;
     }
     public String getName() { return name; }
-
     public void addItem(Connection connection, Scanner scanner) throws SQLException {
     createTablesIfNotExists(connection);
     System.out.print("Number of Constituents of Item: ");
@@ -23,7 +22,8 @@ public class Items {
     int[] raw_material_id = new int[length];
 
     for (int i = 0; i < length; i++) {
-        System.out.print("Enter the Raw Material "+i+1+" ID: ");
+        int num = i + 1;
+        System.out.print("Enter the Raw Material "+ num +" ID: ");
         raw_material_id[i] = scanner.nextInt();
         scanner.nextLine();
     }
@@ -108,7 +108,6 @@ public class Items {
             }
         }
     }
-
     private void createTablesIfNotExists(Connection connection) throws SQLException {
         String createItemsTableQuery = "CREATE TABLE IF NOT EXISTS items (itemId INTEGER PRIMARY KEY, name TEXT NOT NULL, price_per_unit INTEGER NOT NULL,supplier_id INTEGER, FOREIGN KEY(supplier_id) REFERENCES suppliers(id))";
         String createItemsRawMaterialTableQuery = "CREATE TABLE IF NOT EXISTS items_raw_materials (itemId INTEGER, raw_material_id INTEGER, FOREIGN KEY(itemId) REFERENCES items(itemId), FOREIGN KEY(raw_material_id) REFERENCES raw_materials(id),PRIMARY KEY(itemId, raw_material_id))";
@@ -122,5 +121,42 @@ public class Items {
         }
 
     }
-    public void findAll(Connection connection){}
+    public void findAll(Connection connection) throws SQLException {
+        String selectAllQuery = "SELECT * FROM  items";
+
+        try (Statement stmt = connection.createStatement();
+             ResultSet rs = stmt.executeQuery(selectAllQuery)) {
+            System.out.println("Item ID\tName\t\tSupplier ID\t\tPrice per Unit\tQuantity");
+            System.out.println("---------------------------------------------------------");
+
+            while (rs.next()) {
+                int id = rs.getInt("itemId");
+                String name = rs.getString("name");
+                String supplierId = rs.getString("supplier_id");
+                int price = rs.getInt("price_per_unit");
+                System.out.println(id + "\t" + name + "\t" + supplierId + "\t" + price + "\t");
+            }
+
+        } catch (SQLException e) {
+            System.out.println("Error fetching users: " + e.getMessage());
+            throw e;
+        }
+    }
+    public void deleteItems(Connection connection, Scanner scanner) throws SQLException {
+        System.out.print("Enter Item ID: ");
+        int ItemId = scanner.nextInt();
+        scanner.nextLine();
+
+        try (PreparedStatement stmt = connection.prepareStatement("DELETE FROM items WHERE itemId = ?")) {
+            stmt.setInt(1, itemId);
+            int rowsDeleted = stmt.executeUpdate();
+            if (rowsDeleted > 0) {
+                System.out.println("Item deleted successfully.");
+            } else {
+                System.out.println("No matching Item found.");
+            }
+        }catch (SQLException e) {
+            System.out.println("Error deleting Item.");
+        }
+    }
 }
