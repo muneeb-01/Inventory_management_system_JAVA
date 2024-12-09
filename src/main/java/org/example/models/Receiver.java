@@ -12,20 +12,9 @@ public class Receiver extends User {
 
         System.out.print("Enter Receiver Contact: ");
         String contact = scanner.nextLine();
-
-        String createTableQuery = "CREATE TABLE IF NOT EXISTS receiver (" +
-                "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
-                "name TEXT NOT NULL, " +
-                "contact TEXT NOT NULL)";
+        initializeTable(connection);
 
         String insertSupplierQuery = "INSERT INTO receiver (name, contact) VALUES (?, ?)";
-
-        try (Statement stmt = connection.createStatement()) {
-            stmt.executeUpdate(createTableQuery);
-        } catch (SQLException e) {
-            System.out.println("Error creating table: " + e.getMessage());
-        }
-
         try (PreparedStatement stmt = connection.prepareStatement(insertSupplierQuery)) {
             stmt.setString(1, name);
             stmt.setString(2, contact);
@@ -36,42 +25,21 @@ public class Receiver extends User {
             throw e;
         }
     }
-//    @Override
-//    public void DeleteUser(Connection connection, Scanner scanner) throws SQLException {
-//        System.out.print("Enter Receiver Name or ID: ");
-//        String userInput = scanner.nextLine().trim();
-//
-//        String deleteByIdQuery = "DELETE FROM receiver WHERE id = ?";
-//        String deleteByNameQuery = "DELETE FROM receiver WHERE name = ?";
-//
-//        try {
-//            int id = Integer.parseInt(userInput);
-//
-//            try (PreparedStatement stmt = connection.prepareStatement(deleteByIdQuery)) {
-//                stmt.setInt(1, id);
-//                int rowsAffected = stmt.executeUpdate();
-//                if (rowsAffected > 0) {
-//                    System.out.println("Supplier with ID " + id + " has been deleted.");
-//                } else {
-//                    System.out.println("No supplier found with ID " + id);
-//                }
-//            }
-//
-//        } catch (NumberFormatException e) {
-//            try (PreparedStatement stmt = connection.prepareStatement(deleteByNameQuery)) {
-//                stmt.setString(1, userInput);
-//                int rowsAffected = stmt.executeUpdate();
-//                if (rowsAffected > 0) {
-//                    System.out.println("Supplier with name " + userInput + " has been deleted.");
-//                } else {
-//                    System.out.println("No supplier found with name " + userInput);
-//                }
-//            }
-//        } catch (SQLException e) {
-//            System.out.println("Error deleting supplier: " + e.getMessage());
-//            throw e;
-//        }
-//    }
+    static private void initializeTable(Connection connection) {
+
+        String createTableQuery = "CREATE TABLE IF NOT EXISTS receiver (" +
+                "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                "name TEXT NOT NULL, " +
+                "contact TEXT NOT NULL)";
+
+
+        try (Statement stmt = connection.createStatement()) {
+            stmt.executeUpdate(createTableQuery);
+        } catch (SQLException e) {
+            System.out.println("Error creating table: " + e.getMessage());
+        }
+
+    }
     @Override
     public void DeleteUser(Connection connection, Scanner scanner) throws SQLException {
         System.out.print("Enter Supplier Name or ID to delete: ");
@@ -93,9 +61,9 @@ public class Receiver extends User {
             throw e; // Rethrow the exception after logging the error
         }
     }
-
     // Delete supplier by ID
     private void deleteReceiverById(Connection connection, int id, String deleteByIdQuery) throws SQLException {
+        initializeTable(connection);
         try (PreparedStatement stmt = connection.prepareStatement(deleteByIdQuery)) {
             stmt.setInt(1, id);
             int rowsAffected = stmt.executeUpdate();
@@ -106,9 +74,8 @@ public class Receiver extends User {
             }
         }
     }
-
-    // Delete supplier by name, with additional logic to handle duplicate names
     private void deleteReceiverByName(Connection connection, String name, String deleteByNameQuery, Scanner scanner) throws SQLException {
+        initializeTable(connection);
         try (PreparedStatement stmt = connection.prepareStatement(deleteByNameQuery)) {
             stmt.setString(1, name);
             ResultSet rs = stmt.executeQuery();
@@ -137,6 +104,5 @@ public class Receiver extends User {
             }
         }
     }
-
 }
 

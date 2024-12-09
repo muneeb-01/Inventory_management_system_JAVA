@@ -9,6 +9,7 @@ public class Order {
     private int itemId;
     private int quantity;
     private int isFullFilled = 0;
+    private int id;
 
     public void addOrder(Connection connection, Scanner scanner) {
         try {
@@ -73,7 +74,7 @@ public class Order {
             scanner.nextLine(); // Clear buffer in case of invalid input
         }
     }
-    private void createTablesIfNotExists(Connection connection) throws SQLException {
+    private void createTablesIfNotExists(Connection connection) {
         String createOrdersTableQuery = """
             CREATE TABLE IF NOT EXISTS orders (
                 orderId INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -90,13 +91,12 @@ public class Order {
 
         try (Statement stmt = connection.createStatement()) {
             stmt.execute(createOrdersTableQuery);
-            System.out.println("Order table created or already exists.");
         } catch (SQLException e) {
             System.out.println("Error creating Order table: " + e.getMessage());
-            throw e; // Rethrow exception to handle upstream if necessary
         }
     }
     private boolean fetchReceiverById(Connection connection, int receiverId) {
+        createTablesIfNotExists(connection);
         String query = "SELECT * FROM receiver WHERE id = ?";
         try (PreparedStatement pstmt = connection.prepareStatement(query)) {
             pstmt.setInt(1, receiverId);
@@ -115,6 +115,7 @@ public class Order {
         }
     }
     private boolean fetchItemByID(Connection connection, int itemId) {
+        createTablesIfNotExists(connection);
         String query = "SELECT * FROM items WHERE itemid = ?";
         try (PreparedStatement pstmt = connection.prepareStatement(query)) {
             pstmt.setInt(1, itemId);
@@ -133,6 +134,7 @@ public class Order {
         }
     }
     public  void  deleteOrder(Connection connection,Scanner scanner){
+        createTablesIfNotExists(connection);
         System.out.print("Enter Item ID: ");
         int orderID = scanner.nextInt();
         scanner.nextLine();
@@ -149,6 +151,7 @@ public class Order {
             System.out.println("Error deleting Item.");
         }}
     public void displayOrders(Connection connection) {
+        createTablesIfNotExists(connection);
         String fetchOrdersQuery = "SELECT * FROM orders";
 
         try (Statement stmt = connection.createStatement();
@@ -175,6 +178,42 @@ public class Order {
 
         } catch (SQLException e) {
             System.out.println("Error fetching orders: " + e.getMessage());
+        }
+    }
+    public void findById(Connection connection, Scanner scanner,String type) throws SQLException {
+        createTablesIfNotExists(connection);
+        System.out.print("Enter ID : ");
+        id = scanner.nextInt();
+        scanner.nextLine();
+
+        String selectQuery = "SELECT * FROM " + type + " WHERE orderId = ?";
+        try (PreparedStatement stmt = connection.prepareStatement(selectQuery)) {
+            stmt.setInt(1, id);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    System.out.println("ID | Name         | Quantity   | Receiver ID   | Item ID    | FullFilled  ");
+                    System.out.println("---------------------------------------------------------------------------------");
+
+                    do {
+                        id = rs.getInt("orderId");
+                        name = rs.getString("name");
+                        quantity = rs.getInt("quantity");
+                        receiverID = rs.getInt("receiverId");
+                        itemId = rs.getInt("itemId");
+                        isFullFilled = rs.getInt("fulfilled");
+
+                        // Print the details of the current row
+                        System.out.printf("%d | %-10s | %8d | %8d | %8d | %s",
+                                id, name, quantity,receiverID,itemId,isFullFilled == 1 ? "Yes" : "No");
+                    } while (rs.next());
+                    System.out.println();
+                } else {
+                    System.out.println("No " + type + " found with ID = " + id);
+                }
+            }
+        } catch (SQLException e) {
+            System.out.println("Error finding " + type + ": " + e.getMessage());
+            throw e;
         }
     }
 }

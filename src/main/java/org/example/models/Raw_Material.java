@@ -4,6 +4,7 @@ import java.sql.*;
 import java.util.Scanner;
 
 public class Raw_Material {
+    private int id;
     private String name;
     private int quantity;
     private int supplierId;
@@ -77,6 +78,7 @@ public class Raw_Material {
         }
     }
     public void deleteRawMaterial(Connection connection, Scanner scanner) throws SQLException {
+        createTableIfNotExists(connection);
         System.out.print("Enter Supplier ID: ");
         int SupplierId = scanner.nextInt();
         scanner.nextLine();
@@ -99,6 +101,7 @@ public class Raw_Material {
         }
     }
     public void findAll(Connection connection) throws SQLException {
+        createTableIfNotExists(connection);
         String selectAllQuery = "SELECT * FROM  raw_materials";
 
         try (Statement stmt = connection.createStatement();
@@ -118,6 +121,40 @@ public class Raw_Material {
 
         } catch (SQLException e) {
             System.out.println("Error fetching users: " + e.getMessage());
+            throw e;
+        }
+    }
+    public void findById(Connection connection, Scanner scanner,String type) throws SQLException {
+        createTableIfNotExists(connection);
+        System.out.print("Enter ID : ");
+        id = scanner.nextInt();
+        scanner.nextLine();
+
+        String selectQuery = "SELECT * FROM " + type + " WHERE id = ?";
+        try (PreparedStatement stmt = connection.prepareStatement(selectQuery)) {
+            stmt.setInt(1, id);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    System.out.println("ID | Name         | supplier ID  | Quantity   | Price   ");
+                    System.out.println("---------------------------------------------------------------------------------");
+
+                    do {
+                        id = rs.getInt("id");
+                        name = rs.getString("name");
+                        supplierId = rs.getInt("supplier_id");
+                        quantity = rs.getInt("quantity");
+                        price = rs.getInt("price");
+                        // Print the details of the current row
+                        System.out.printf("%d | %-10s | %8d | %8d | %8d ",
+                                id, name, supplierId,quantity,price);
+                    } while (rs.next());
+                    System.out.println();
+                } else {
+                    System.out.println("No " + type + " found with ID = " + id);
+                }
+            }
+        } catch (SQLException e) {
+            System.out.println("Error finding " + type + ": " + e.getMessage());
             throw e;
         }
     }

@@ -36,7 +36,7 @@ public class Main {
             }
         }
     }
-    private static void showMainMenu() {
+    static private  void showMainMenu() {
         System.out.println("Choose an option:");
         System.out.println("1. Supplier");
         System.out.println("2. Receiver");
@@ -45,7 +45,7 @@ public class Main {
         System.out.println("5. AddOrder");
         System.out.println("Press 'Esc' to Exit");
     }
-    private static void processMainMenuChoice(int userInput, Connection connection, Scanner scanner, Main main) {
+    static private  void processMainMenuChoice(int userInput, Connection connection, Scanner scanner, Main main) {
         switch (userInput) {
             case '1': main.runEntityMenu(new Supplier(), "Supplier", connection, scanner); break;
             case '2': main.runEntityMenu(new Receiver(), "Receiver", connection, scanner); break;
@@ -55,6 +55,7 @@ public class Main {
             default: System.out.println("Invalid choice. Please enter a valid option or press 'Esc' to exit.");
         }
     }
+
     private void runEntityMenu(Object entity, String entityName, Connection connection, Scanner scanner) {
         int userInput;
 
@@ -80,6 +81,8 @@ public class Main {
         System.out.println("1. Add " + entityName);
         System.out.println("2. Delete " + entityName);
         System.out.println("3. View All " + entityName + "s");
+        System.out.println("4. Get " + entityName + " by ID.");
+
         System.out.println("Press 'Esc' to Exit");
     }
     private void handleEntityChoice(Object entity, int userInput, Connection connection, Scanner scanner) {
@@ -88,6 +91,7 @@ public class Main {
                 case '1': addEntity(entity, connection, scanner); break;
                 case '2': deleteEntity(entity, connection, scanner); break;
                 case '3': viewAllEntities(entity, connection); break;
+                case '4': getEntityById(entity,connection,scanner); break;
                 default: System.out.println("Invalid choice. Please enter a valid number or press 'Esc' to exit."); break;
             }
         } catch (SQLException e) {
@@ -131,6 +135,21 @@ public class Main {
             ((Items) entity).findAll(connection);
         } else if (entity instanceof Order) {
             ((Order) entity).displayOrders(connection);
+        }
+    }
+    private void getEntityById(Object entity, Connection connection,Scanner scanner) throws SQLException {
+        if (entity instanceof Supplier) {
+            ((Supplier) entity).findById(connection,scanner,"suppliers");
+        }else if(entity instanceof Receiver){
+            ((Receiver) entity).findById(connection,scanner,"receiver");
+        } else if (entity instanceof Raw_Material) {
+            ((Raw_Material) entity).findById(connection,scanner,"raw_materials");
+        }
+        else if (entity instanceof Order) {
+            ((Order) entity).findById(connection,scanner,"orders");
+        }
+        else if (entity instanceof Items) {
+            ((Items) entity).findById(connection,scanner,"items");
         }
     }
 }

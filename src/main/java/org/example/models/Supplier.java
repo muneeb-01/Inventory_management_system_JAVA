@@ -4,8 +4,6 @@ import java.sql.*;
 import java.util.Scanner;
 
 public class Supplier extends User {
-
-    // Method to initialize the 'suppliers' table (moved from AddUser for better separation of concerns)
     private void initializeSuppliersTable(Connection connection) throws SQLException {
         String createTableQuery = "CREATE TABLE IF NOT EXISTS suppliers (" +
                 "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
@@ -19,8 +17,6 @@ public class Supplier extends User {
             throw e;
         }
     }
-
-    // Add a supplier to the database
     @Override
     public void AddUser(Connection connection, Scanner scanner) throws SQLException {
         System.out.print("Enter Supplier Name: ");
@@ -46,13 +42,13 @@ public class Supplier extends User {
     }
     @Override
     public void DeleteUser(Connection connection, Scanner scanner) throws SQLException {
+        initializeSuppliersTable(connection);
         System.out.print("Enter Supplier Name or ID to delete: ");
         String userInput = scanner.nextLine().trim();
 
         // Queries for deletion by ID or name
         String deleteByIdQuery = "DELETE FROM suppliers WHERE id = ?";
         String deleteByNameQuery = "SELECT id, name FROM suppliers WHERE name = ?";
-
         // Try to delete by ID if the user input is numeric
         try {
             int id = Integer.parseInt(userInput);  // Check if the input is an integer (ID)
@@ -65,7 +61,6 @@ public class Supplier extends User {
             throw e; // Rethrow the exception after logging the error
         }
     }
-
     // Delete supplier by ID
     private void deleteSupplierById(Connection connection, int id, String deleteByIdQuery) throws SQLException {
         try (PreparedStatement stmt = connection.prepareStatement(deleteByIdQuery)) {
@@ -78,7 +73,6 @@ public class Supplier extends User {
             }
         }
     }
-
     // Delete supplier by name, with additional logic to handle duplicate names
     private void deleteSupplierByName(Connection connection, String name, String deleteByNameQuery, Scanner scanner) throws SQLException {
         try (PreparedStatement stmt = connection.prepareStatement(deleteByNameQuery)) {
@@ -109,5 +103,4 @@ public class Supplier extends User {
             }
         }
     }
-
 }

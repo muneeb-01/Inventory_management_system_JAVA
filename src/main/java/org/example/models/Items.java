@@ -7,11 +7,8 @@ public class Items {
     private int itemId;
     private String name;
     private int price_per_unit;
+    private int supplierID;
 
-    public int getItemId() {
-
-        return itemId;
-    }
     public String getName() { return name; }
     public void addItem(Connection connection, Scanner scanner) throws SQLException {
     createTablesIfNotExists(connection);
@@ -108,13 +105,12 @@ public class Items {
             }
         }
     }
-    private void createTablesIfNotExists(Connection connection) throws SQLException {
+    static private void createTablesIfNotExists(Connection connection) throws SQLException {
         String createItemsTableQuery = "CREATE TABLE IF NOT EXISTS items (itemId INTEGER PRIMARY KEY, name TEXT NOT NULL, price_per_unit INTEGER NOT NULL,supplier_id INTEGER, FOREIGN KEY(supplier_id) REFERENCES suppliers(id))";
         String createItemsRawMaterialTableQuery = "CREATE TABLE IF NOT EXISTS items_raw_materials (itemId INTEGER, raw_material_id INTEGER, FOREIGN KEY(itemId) REFERENCES items(itemId), FOREIGN KEY(raw_material_id) REFERENCES raw_materials(id),PRIMARY KEY(itemId, raw_material_id))";
         try(Statement stmt = connection.createStatement()) {
             stmt.execute(createItemsTableQuery);
             stmt.execute(createItemsRawMaterialTableQuery);
-            System.out.println("Items table created");
         }
         catch (SQLException e) {
             System.out.println("Error creating Item's table");
@@ -122,6 +118,7 @@ public class Items {
 
     }
     public void findAll(Connection connection) throws SQLException {
+        createTablesIfNotExists(connection);
         String selectAllQuery = "SELECT * FROM  items";
 
         try (Statement stmt = connection.createStatement();
@@ -143,6 +140,7 @@ public class Items {
         }
     }
     public void deleteItems(Connection connection, Scanner scanner) throws SQLException {
+        createTablesIfNotExists(connection);
         System.out.print("Enter Item ID: ");
         int ItemId = scanner.nextInt();
         scanner.nextLine();
@@ -159,4 +157,39 @@ public class Items {
             System.out.println("Error deleting Item.");
         }
     }
+    public void findById(Connection connection, Scanner scanner,String type) throws SQLException {
+        createTablesIfNotExists(connection);
+        System.out.print("Enter ID : ");
+        itemId = scanner.nextInt();
+        scanner.nextLine();
+
+        String selectQuery = "SELECT * FROM " + type + " WHERE itemId = ?";
+        try (PreparedStatement stmt = connection.prepareStatement(selectQuery)) {
+            stmt.setInt(1, itemId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    System.out.println("ID | Name         | Price Per Unit   | Supplier ID   ");
+                    System.out.println("---------------------------------------------------------------------------------");
+
+                    do {
+                        itemId = rs.getInt("itemId");
+                        name = rs.getString("name");
+                        price_per_unit = rs.getInt("price_per_unit");
+                        supplierID = rs.getInt("supplier_id");
+
+                        // Print the details of the current row
+                        System.out.printf("%d | %-10s | %8d | %8d ",
+                                itemId, name, price_per_unit, supplierID);
+                    } while (rs.next());
+                    System.out.println();
+                } else {
+                    System.out.println("No " + type + " found with ID = " + itemId);
+                }
+            }
+        } catch (SQLException e) {
+            System.out.println("Error finding " + type + ": " + e.getMessage());
+            throw e;
+        }
+    }
+
 }
