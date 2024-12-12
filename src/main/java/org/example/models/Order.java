@@ -40,6 +40,10 @@ public class Order {
             this.quantity = scanner.nextInt();
             scanner.nextLine();
 
+            if (!getRawMaterialInformation(connection,this.quantity, this.itemId)){
+                return;
+            };
+
             System.out.print("Is the order fulfilled? (0 = No, 1 = Yes): ");
             this.isFullFilled = scanner.nextInt();
 
@@ -73,6 +77,82 @@ public class Order {
             System.out.println("Invalid input: " + e.getMessage());
             scanner.nextLine(); // Clear buffer in case of invalid input
         }
+    }
+    private void manageItems(Connection connection, int quantity, int rawMaterialId) {
+        String updateQuery = "UPDATE raw_materials SET quantity = quantity - ? WHERE id = ?";
+        try (PreparedStatement pstmt = connection.prepareStatement(updateQuery)) {
+
+            // Validate inputs
+            if (quantity <= 0) {
+                throw new IllegalArgumentException("Quantity must be greater than 0.");
+            }
+            if (rawMaterialId <= 0) {
+                throw new IllegalArgumentException("Invalid raw material ID.");
+            }
+
+            // Set parameters
+            pstmt.setInt(1, quantity);
+            pstmt.setInt(2, rawMaterialId);
+
+            // Execute update
+            int rowsAffected = pstmt.executeUpdate();
+            if (rowsAffected > 0) {
+                System.out.println("Successfully updated quantity for raw material ID: " + rawMaterialId);
+            } else {
+                System.out.println("No raw material found with ID: " + rawMaterialId);
+            }
+
+        } catch (IllegalArgumentException e) {
+            System.err.println("Input validation error: " + e.getMessage());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+    private Boolean getRawMaterialInformation(Connection connection, int quantity,int itemId) {
+        String query = "SELECT " +
+                "i.itemId AS ItemID, " +
+                "i.name AS ItemName, " +
+                "i.price_per_unit AS PricePerUnit, " +
+                "r.id AS RawMaterialID, " +
+                "r.name AS RawMaterialName, " +
+                "r.quantity AS RawMaterialQuantity " +
+                "FROM items AS i " +
+                "JOIN items_raw_materials AS ir ON i.itemId = ir.itemId " +
+                "JOIN raw_materials AS r ON ir.raw_material_id = r.id " +  // Added space before WHERE
+                "WHERE i.itemId = ?";
+
+        try (PreparedStatement pstmt = connection.prepareStatement(query)) {
+            pstmt.setInt(1, itemId);  // Bind the parameter
+
+            try (ResultSet rs = pstmt.executeQuery()) {
+                boolean dataFound = false;
+
+                while (rs.next()) {
+                    dataFound = true;
+
+                    int rawMaterialId = rs.getInt("RawMaterialID");
+                    String rawMaterialName = rs.getString("RawMaterialName");
+                    int rawMaterialQuantity = rs.getInt("RawMaterialQuantity");
+                    if (rawMaterialQuantity < quantity){
+                        System.out.println("Not enough "+ rawMaterialName +" (ItemID : "+rawMaterialId+").");
+                        System.out.println("YOu need atleast" + (quantity - rawMaterialQuantity) + "more " + rawMaterialName + ".");
+                        System.out.println("Could not add the order.");
+                        Boolean OrderStatus = false;
+                        return OrderStatus;
+                    }
+                    manageItems(connection, quantity, rawMaterialId);
+
+                }
+
+                if (!dataFound) {
+                    System.out.println("No raw materials found for Item ID: " + itemId);
+                }
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    return true;
     }
     private void createTablesIfNotExists(Connection connection) {
         String createOrdersTableQuery = """
