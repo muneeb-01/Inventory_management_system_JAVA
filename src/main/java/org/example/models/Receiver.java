@@ -1,108 +1,86 @@
 package org.example.models;
 
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.Scanner;
 
 public class Receiver extends User {
+
+    public Receiver(Connection connection) {
+        super(connection);
+    }
+
     @Override
-    public void AddUser(Connection connection, Scanner scanner) throws SQLException {
+    public String getTableName() {
+        return "receiver";
+    }
 
+    @Override
+    public void addUser(Connection connection, Scanner scanner) throws SQLException {
         System.out.print("Enter Receiver Name: ");
-        String name = scanner.nextLine();
+        name = scanner.nextLine();
 
-        System.out.print("Enter Receiver Contact: ");
-        String contact = scanner.nextLine();
-        initializeTable(connection);
+        System.out.print("Enter Contact Info: ");
+        contactInfo = scanner.nextLine();
 
-        String insertSupplierQuery = "INSERT INTO receiver (name, contact) VALUES (?, ?)";
-        try (PreparedStatement stmt = connection.prepareStatement(insertSupplierQuery)) {
+        String query = "INSERT INTO receiver (name, contact) VALUES (?, ?)";
+        try (PreparedStatement stmt = connection.prepareStatement(query)) {
             stmt.setString(1, name);
-            stmt.setString(2, contact);
-            stmt.executeUpdate();
-            System.out.println("Supplier added successfully: " + name + " (" + contact + ")");
+            stmt.setString(2, contactInfo);
+            int rows = stmt.executeUpdate();
+            System.out.println(rows + " receiver(s) added successfully.");
         } catch (SQLException e) {
-            System.out.println("Error adding supplier: " + e.getMessage());
+            System.out.println("Error adding receiver: " + e.getMessage());
             throw e;
         }
     }
-    static private void initializeTable(Connection connection) {
 
-        String createTableQuery = "CREATE TABLE IF NOT EXISTS receiver (" +
-                "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
-                "name TEXT NOT NULL, " +
-                "contact TEXT NOT NULL)";
-
-
-        try (Statement stmt = connection.createStatement()) {
-            stmt.executeUpdate(createTableQuery);
-        } catch (SQLException e) {
-            System.out.println("Error creating table: " + e.getMessage());
-        }
-
-    }
     @Override
-    public void DeleteUser(Connection connection, Scanner scanner) throws SQLException {
-        System.out.print("Enter Supplier Name or ID to delete: ");
-        String userInput = scanner.nextLine().trim();
+    public void deleteUser(Connection connection, Scanner scanner) throws SQLException {
+        System.out.print("Enter Receiver ID to delete: ");
+        int id = scanner.nextInt();
+        scanner.nextLine(); // Consume newline
 
-        // Queries for deletion by ID or name
-        String deleteByIdQuery = "DELETE FROM receiver WHERE id = ?";
-        String deleteByNameQuery = "SELECT id, name FROM receiver WHERE name = ?";
-
-        // Try to delete by ID if the user input is numeric
-        try {
-            int id = Integer.parseInt(userInput);  // Check if the input is an integer (ID)
-            deleteReceiverById(connection, id, deleteByIdQuery);
-        } catch (NumberFormatException e) {
-            // If it's not a number, we assume it's a name and proceed with the name search
-            deleteReceiverByName(connection, userInput, deleteByNameQuery, scanner);
+        String query = "DELETE FROM receiver WHERE id = ?";
+        try (PreparedStatement stmt = connection.prepareStatement(query)) {
+            stmt.setInt(1, id);
+            int rows = stmt.executeUpdate();
+            if (rows > 0) {
+                System.out.println("Receiver with ID " + id + " deleted successfully.");
+            } else {
+                System.out.println("No receiver found with ID " + id);
+            }
         } catch (SQLException e) {
             System.out.println("Error deleting receiver: " + e.getMessage());
-            throw e; // Rethrow the exception after logging the error
+            throw e;
         }
     }
-    // Delete supplier by ID
-    private void deleteReceiverById(Connection connection, int id, String deleteByIdQuery) throws SQLException {
-        initializeTable(connection);
-        try (PreparedStatement stmt = connection.prepareStatement(deleteByIdQuery)) {
-            stmt.setInt(1, id);
-            int rowsAffected = stmt.executeUpdate();
-            if (rowsAffected > 0) {
-                System.out.println("Supplier with ID " + id + " has been deleted.");
-            } else {
-                System.out.println("No supplier found with ID " + id);
-            }
-        }
+
+    @Override
+    public void showMenu() {
+        System.out.println("Receiver Management Menu:");
+        System.out.println("1. Add Receiver");
+        System.out.println("2. Delete Receiver");
+        System.out.println("3. View All Receivers");
+        System.out.println("4. Find Receiver by ID");
+        System.out.println("5. Exit");
     }
-    private void deleteReceiverByName(Connection connection, String name, String deleteByNameQuery, Scanner scanner) throws SQLException {
-        initializeTable(connection);
-        try (PreparedStatement stmt = connection.prepareStatement(deleteByNameQuery)) {
-            stmt.setString(1, name);
-            ResultSet rs = stmt.executeQuery();
 
-            // Collect all suppliers with the same name
-            int count = 0;
-            while (rs.next()) {
-                count++;
+    @Override
+    public void handleChoice(int choice, Connection connection, Scanner scanner) {
+        try {
+            switch (choice) {
+                case 1 -> addUser(connection, scanner);
+                case 2 -> deleteUser(connection, scanner);
+                case 3 -> findAll(connection);
+                case 4 -> findById(connection, scanner);
+                case 5 -> System.out.println("Exiting Receiver Management...");
+                default -> System.out.println("Invalid choice. Try again.");
             }
-
-            if (count == 0) {
-                System.out.println("No receiver found with name " + name);
-            } else if (count == 1) {
-                // If only one supplier found, delete directly
-                rs.beforeFirst(); // Move cursor back to the start
-                if (rs.next()) {
-                    int id = rs.getInt("id");
-                    deleteReceiverById(connection, id, "DELETE FROM receiver WHERE id = ?");
-                }
-            } else {
-                // If multiple suppliers with the same name, ask for the ID
-                System.out.println("Multiple receiver found with name: " + name);
-                System.out.print("Enter the ID of the receiver you want to delete: ");
-                int supplierId = scanner.nextInt();
-                deleteReceiverById(connection, supplierId, "DELETE FROM receiver WHERE id = ?");
-            }
+        } catch (SQLException e) {
+            System.out.println("Error: " + e.getMessage());
         }
     }
 }
-

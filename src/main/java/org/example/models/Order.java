@@ -1,9 +1,13 @@
 package org.example.models;
 
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.Scanner;
 
-public class Order {
+public class Order implements EntityHandler {
     private String name;
     private int receiverID;
     private int itemId;
@@ -11,51 +15,86 @@ public class Order {
     private int isFullFilled = 0;
     private int id;
 
+    public Order(Connection connection) {
+        createTablesIfNotExists(connection);
+    }
+
+    @Override
+    public void showMenu() {
+        System.out.println("Order Management Menu:");
+        System.out.println("1. Add Order");
+        System.out.println("2. Delete Order");
+        System.out.println("3. Display Orders");
+        System.out.println("4. Find Order by ID");
+        System.out.println("5. Mark Order as Completed");
+        System.out.println("6. Update Order Quantity");
+        System.out.println("0. Exit");
+    }
+
+    @Override
+    public void handleChoice(int choice, Connection connection, Scanner scanner) {
+        switch (choice) {
+            case 1:
+                addOrder(connection, scanner);
+                break;
+            case 2:
+                deleteOrder(connection, scanner);
+                break;
+            case 3:
+                displayOrders(connection);
+                break;
+            case 4:
+                findById(connection, scanner, "orders");
+                break;
+            case 5:
+                completion(connection, scanner);
+                break;
+            case 6:
+                updateOrderQuantity(connection,scanner);
+                break;
+            default:
+                System.out.println("Invalid choice. Please try again.");
+                break;
+        }
+    }
+
     public void addOrder(Connection connection, Scanner scanner) {
         try {
-            // Step 1: Create the table if it doesn't exist
-            createTablesIfNotExists(connection);
-
-            // Step 2: Collect order details from the user
             System.out.print("Enter Name: ");
             this.name = scanner.nextLine();
-
             System.out.print("Enter Item ID: ");
             this.itemId = scanner.nextInt();
 
-            if(!fetchItemByID(connection, this.itemId)) {
-                System.out.print("Item not found. Please enter a valid Item ID.");
+            if (!fetchItemByID(connection, this.itemId)) {
+                System.out.println("Item not found. Please enter a valid Item ID.");
                 return;
             }
 
             System.out.print("Enter Receiver ID: ");
             this.receiverID = scanner.nextInt();
 
-            if(!fetchReceiverById(connection, this.receiverID)) {
+            if (!fetchReceiverById(connection, this.receiverID)) {
                 System.out.println("Receiver not found. Please enter a valid Receiver ID.");
                 return;
             }
 
             System.out.print("Enter Quantity: ");
             this.quantity = scanner.nextInt();
-            scanner.nextLine();
+            scanner.nextLine(); // Consume newline
 
-            if (!getRawMaterialInformation(connection,this.quantity, this.itemId)){
+            if (!getRawMaterialInformation(connection, this.quantity, this.itemId)) {
                 return;
-            };
+            }
 
             System.out.print("Is the order fulfilled? (0 = No, 1 = Yes): ");
             this.isFullFilled = scanner.nextInt();
+            scanner.nextLine();
 
-            String getReceiverByID = "DELETE FROM receiver WHERE id = ?";
-
-            // SQL insert query
             String insertOrderQuery = """
-                INSERT INTO orders (name, itemId, receiverId, fulfilled,quantity) 
-                VALUES (?, ?, ?, ?,?)
+                INSERT INTO orders (name, itemId, receiverId, fulfilled, quantity) 
+                VALUES (?, ?, ?, ?, ?)
             """;
 
-            // Use PreparedStatement for secure data insertion
             try (PreparedStatement pstmt = connection.prepareStatement(insertOrderQuery)) {
                 pstmt.setString(1, this.name);
                 pstmt.setInt(2, this.itemId);
@@ -63,7 +102,6 @@ public class Order {
                 pstmt.setInt(4, this.isFullFilled);
                 pstmt.setInt(5, this.quantity);
 
-                // Execute the query
                 int rowsInserted = pstmt.executeUpdate();
                 if (rowsInserted > 0) {
                     System.out.println("Order added successfully!");
@@ -78,144 +116,9 @@ public class Order {
             scanner.nextLine(); // Clear buffer in case of invalid input
         }
     }
-    private void manageItems(Connection connection, int quantity, int rawMaterialId) {
-        String updateQuery = "UPDATE raw_materials SET quantity = quantity - ? WHERE id = ?";
-        try (PreparedStatement pstmt = connection.prepareStatement(updateQuery)) {
 
-            // Validate inputs
-            if (quantity <= 0) {
-                throw new IllegalArgumentException("Quantity must be greater than 0.");
-            }
-            if (rawMaterialId <= 0) {
-                throw new IllegalArgumentException("Invalid raw material ID.");
-            }
-
-            // Set parameters
-            pstmt.setInt(1, quantity);
-            pstmt.setInt(2, rawMaterialId);
-
-            // Execute update
-            int rowsAffected = pstmt.executeUpdate();
-            if (rowsAffected > 0) {
-                System.out.println("Successfully updated quantity for raw material ID: " + rawMaterialId);
-            } else {
-                System.out.println("No raw material found with ID: " + rawMaterialId);
-            }
-
-        } catch (IllegalArgumentException e) {
-            System.err.println("Input validation error: " + e.getMessage());
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-    private Boolean getRawMaterialInformation(Connection connection, int quantity,int itemId) {
-        String query = "SELECT " +
-                "i.itemId AS ItemID, " +
-                "i.name AS ItemName, " +
-                "i.price_per_unit AS PricePerUnit, " +
-                "r.id AS RawMaterialID, " +
-                "r.name AS RawMaterialName, " +
-                "r.quantity AS RawMaterialQuantity " +
-                "FROM items AS i " +
-                "JOIN items_raw_materials AS ir ON i.itemId = ir.itemId " +
-                "JOIN raw_materials AS r ON ir.raw_material_id = r.id " +  // Added space before WHERE
-                "WHERE i.itemId = ?";
-
-        try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-            pstmt.setInt(1, itemId);  // Bind the parameter
-
-            try (ResultSet rs = pstmt.executeQuery()) {
-                boolean dataFound = false;
-
-                while (rs.next()) {
-                    dataFound = true;
-
-                    int rawMaterialId = rs.getInt("RawMaterialID");
-                    String rawMaterialName = rs.getString("RawMaterialName");
-                    int rawMaterialQuantity = rs.getInt("RawMaterialQuantity");
-                    if (rawMaterialQuantity < quantity){
-                        System.out.println("Not enough "+ rawMaterialName +" (ItemID : "+rawMaterialId+").");
-                        System.out.println("You need atleast" + (quantity - rawMaterialQuantity) + "more " + rawMaterialName + " to Add the Order.");
-                        System.out.println("Could not add the order.");
-                        Boolean OrderStatus = false;
-                        return OrderStatus;
-                    }
-                    manageItems(connection, quantity, rawMaterialId);
-
-                }
-
-                if (!dataFound) {
-                    System.out.println("No raw materials found for Item ID: " + itemId);
-                }
-            }
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    return true;
-    }
-    private void createTablesIfNotExists(Connection connection) {
-        String createOrdersTableQuery = """
-            CREATE TABLE IF NOT EXISTS orders (
-                orderId INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                quantity INTEGER NOT NULL,
-                itemId INTEGER,
-                receiverId INTEGER,
-                fulfilled INTEGER NOT NULL DEFAULT 0, -- 0 = FALSE, 1 = TRUE
-                createdAt DATETIME DEFAULT CURRENT_TIMESTAMP, -- Automatically stores the current time
-                FOREIGN KEY(itemId) REFERENCES items(itemId),
-                FOREIGN KEY(receiverId) REFERENCES receiver(id)
-            )
-        """;
-
-        try (Statement stmt = connection.createStatement()) {
-            stmt.execute(createOrdersTableQuery);
-        } catch (SQLException e) {
-            System.out.println("Error creating Order table: " + e.getMessage());
-        }
-    }
-    private boolean fetchReceiverById(Connection connection, int receiverId) {
-        createTablesIfNotExists(connection);
-        String query = "SELECT * FROM receiver WHERE id = ?";
-        try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-            pstmt.setInt(1, receiverId);
-            try (ResultSet rs = pstmt.executeQuery()) {
-                if (rs.next()) {
-                    System.out.println("Receiver found: ID = " + rs.getInt("id") + ", Name = " + rs.getString("name"));
-                    return true;
-                } else {
-                    System.out.println("No receiver found with ID: " + receiverId);
-                    return false;
-                }
-            }
-        } catch (SQLException e) {
-            System.out.println("Error fetching receiver: " + e.getMessage());
-            return false;
-        }
-    }
-    private boolean fetchItemByID(Connection connection, int itemId) {
-        createTablesIfNotExists(connection);
-        String query = "SELECT * FROM items WHERE itemid = ?";
-        try (PreparedStatement pstmt = connection.prepareStatement(query)) {
-            pstmt.setInt(1, itemId);
-            try (ResultSet rs = pstmt.executeQuery()) {
-                if (rs.next()) {
-                    System.out.println("Item found: ID = " + rs.getInt("itemId") + ", Name = " + rs.getString("name"));
-                    return true;
-                } else {
-                    System.out.println("No receiver found with ID: " + itemId);
-                    return false;
-                }
-            }
-        } catch (SQLException e) {
-            System.out.println("Error fetching receiver: " + e.getMessage());
-            return false;
-        }
-    }
-    public  void  deleteOrder(Connection connection,Scanner scanner){
-        createTablesIfNotExists(connection);
-        System.out.print("Enter Item ID: ");
+    public void deleteOrder(Connection connection, Scanner scanner) {
+        System.out.print("Enter Order ID: ");
         int orderID = scanner.nextInt();
         scanner.nextLine();
 
@@ -225,23 +128,22 @@ public class Order {
             if (rowsDeleted > 0) {
                 System.out.println("Order deleted successfully.");
             } else {
-                System.out.println("No matching Item found.");
+                System.out.println("No matching Order found.");
             }
-        }catch (SQLException e) {
-            System.out.println("Error deleting Item.");
-        }}
+        } catch (SQLException e) {
+            System.out.println("Error deleting Order: " + e.getMessage());
+        }
+    }
+
     public void displayOrders(Connection connection) {
-        createTablesIfNotExists(connection);
         String fetchOrdersQuery = "SELECT * FROM orders";
 
         try (Statement stmt = connection.createStatement();
              ResultSet rs = stmt.executeQuery(fetchOrdersQuery)) {
 
-            // Print column headers
             System.out.println("OrderID | Name       | Quantity | ItemID | ReceiverID | Fulfilled | CreatedAt");
             System.out.println("---------------------------------------------------------------------------------");
 
-            // Iterate through the result set and print each row
             while (rs.next()) {
                 int orderId = rs.getInt("orderId");
                 String name = rs.getString("name");
@@ -251,17 +153,15 @@ public class Order {
                 int fulfilled = rs.getInt("fulfilled");
                 String createdAt = rs.getString("createdAt");
 
-                // Print the details of the current row
                 System.out.printf("%7d | %-10s | %8d | %6d | %10d | %9s | %s%n",
                         orderId, name, quantity, itemId, receiverId, (fulfilled == 1 ? "Yes" : "No"), createdAt);
             }
-
         } catch (SQLException e) {
             System.out.println("Error fetching orders: " + e.getMessage());
         }
     }
-    public void findById(Connection connection, Scanner scanner,String type) throws SQLException {
-        createTablesIfNotExists(connection);
+
+    public void findById(Connection connection, Scanner scanner, String type) {
         System.out.print("Enter ID : ");
         id = scanner.nextInt();
         scanner.nextLine();
@@ -282,24 +182,20 @@ public class Order {
                         itemId = rs.getInt("itemId");
                         isFullFilled = rs.getInt("fulfilled");
 
-                        // Print the details of the current row
-                        System.out.printf("%d | %-10s | %8d | %8d | %8d | %s",
-                                id, name, quantity,receiverID,itemId,isFullFilled == 1 ? "Yes" : "No");
+                        System.out.printf("%d | %-10s | %8d | %8d | %8d | %s%n",
+                                id, name, quantity, receiverID, itemId, isFullFilled == 1 ? "Yes" : "No");
                     } while (rs.next());
-                    System.out.println();
                 } else {
-                    System.out.println("No " + type + " found with ID = " + id);
+                    System.out.println("No Order found with ID = " + id);
                 }
             }
         } catch (SQLException e) {
-            System.out.println("Error finding " + type + ": " + e.getMessage());
-            throw e;
+            System.out.println("Error finding Order: " + e.getMessage());
         }
     }
-    public void  completion(Connection connection, Scanner scanner){
-        createTablesIfNotExists(connection);
-        createFinishGoodsTablesIfNotExists(connection);
-        try{
+
+    public void completion(Connection connection, Scanner scanner) {
+        try {
             System.out.print("Enter ID : ");
             id = scanner.nextInt();
             scanner.nextLine();
@@ -307,77 +203,223 @@ public class Order {
             String selectQuery = "SELECT * FROM orders WHERE orderId = ?";
 
             try (PreparedStatement stmt = connection.prepareStatement(selectQuery)) {
-            stmt.setInt(1, id);
+                stmt.setInt(1, id);
                 try (ResultSet rs = stmt.executeQuery()) {
                     if (rs.next()) {
-                        System.out.println("ID | Name         | Quantity   | Receiver ID   | Item ID    | FullFilled  ");
-                        System.out.println("---------------------------------------------------------------------------------");
-                        do {
-                            id = rs.getInt("orderId");
-                            name = rs.getString("name");
-                            quantity = rs.getInt("quantity");
-                            receiverID = rs.getInt("receiverId");
-                            itemId = rs.getInt("itemId");
-                            isFullFilled = rs.getInt("fulfilled");
+                        String insertOrderQuery = """
+                            INSERT INTO finish_goods (name, itemId, receiverId, fulfilled, quantity) 
+                            VALUES (?, ?, ?, ?, ?)
+                        """;
 
-                            String insertOrderQuery = """
-                                INSERT INTO finish_goods (name, itemId, receiverId, fulfilled,quantity) 
-                                VALUES (?, ?, ?, ?,?)
-                            """;
+                        try (PreparedStatement pstmt = connection.prepareStatement(insertOrderQuery)) {
+                            pstmt.setString(1, this.name);
+                            pstmt.setInt(2, this.itemId);
+                            pstmt.setInt(3, this.receiverID);
+                            pstmt.setInt(4, this.isFullFilled);
+                            pstmt.setInt(5, this.quantity);
+                            pstmt.executeUpdate();
+                        }
 
-                            // Use PreparedStatement for secure data insertion
-                            try (PreparedStatement pstmt = connection.prepareStatement(insertOrderQuery)) {
-                                pstmt.setString(1, this.name);
-                                pstmt.setInt(2, this.itemId);
-                                pstmt.setInt(3, this.receiverID);
-                                pstmt.setInt(4, this.isFullFilled);
-                                pstmt.setInt(5, this.quantity);
-                                pstmt.executeUpdate();
-                            }
+                        String deleteOrderStatement = "DELETE FROM orders WHERE orderId = ?";
 
-                            String deleteOrderStatement = "DELETE FROM orders WHERE orderId = ?";
+                        try (PreparedStatement pstmt = connection.prepareStatement(deleteOrderStatement)) {
+                            pstmt.setInt(1, id);
+                            pstmt.executeUpdate();
+                        }
 
-                            try (PreparedStatement pstmt = connection.prepareStatement(deleteOrderStatement)) {
-                                pstmt.setInt(1, id);
-                                pstmt.executeUpdate();
-                            }
-
-                            System.out.printf("%d | %-10s | %8d | %8d | %8d | %s",
-                                    id, name, quantity,receiverID,itemId,isFullFilled == 1 ? "Yes" : "No");
-
-
-                        } while (rs.next());
-                    }else{
+                        System.out.println("Order Completion successful.");
+                    } else {
                         System.out.println("No Order found with ID = " + id);
                         return;
                     }
                 }
             }
-        }
-        catch (SQLException e){
+        } catch (SQLException e) {
             e.printStackTrace();
         }
-        System.out.println("Order Completion successfull.");
     }
-    private void createFinishGoodsTablesIfNotExists(Connection connection) {
+
+    private void createTablesIfNotExists(Connection connection) {
         String createOrdersTableQuery = """
+            CREATE TABLE IF NOT EXISTS orders (
+                orderId INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                itemId INTEGER NOT NULL,
+                receiverId INTEGER NOT NULL,
+                fulfilled INTEGER NOT NULL,
+                quantity INTEGER NOT NULL,
+                createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """;
+
+        String createFinishGoodsTableQuery = """
             CREATE TABLE IF NOT EXISTS finish_goods (
                 orderId INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL,
+                itemId INTEGER NOT NULL,
+                receiverId INTEGER NOT NULL,
+                fulfilled INTEGER NOT NULL,
                 quantity INTEGER NOT NULL,
-                itemId INTEGER,
-                receiverId INTEGER,
-                fulfilled INTEGER NOT NULL DEFAULT 1, -- 0 = FALSE, 1 = TRUE
-                createdAt DATETIME DEFAULT CURRENT_TIMESTAMP, -- Automatically stores the current time
-                FOREIGN KEY(itemId) REFERENCES items(itemId),
-                FOREIGN KEY(receiverId) REFERENCES receiver(id)
+                createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """;
 
         try (Statement stmt = connection.createStatement()) {
             stmt.execute(createOrdersTableQuery);
+            stmt.execute(createFinishGoodsTableQuery);
         } catch (SQLException e) {
-            System.out.println("Error creating Order table: " + e.getMessage());
+            System.out.println("Error creating tables: " + e.getMessage());
         }
     }
+
+    private boolean fetchItemByID(Connection connection, int itemId) {
+        try (PreparedStatement pstmt = connection.prepareStatement("SELECT * FROM items WHERE itemId = ?")) {
+            pstmt.setInt(1, itemId);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    return true;
+                }
+            }
+        } catch (SQLException e) {
+            System.out.println("Error fetching item by ID: " + e.getMessage());
+        }
+        return false;
+    }
+
+    private boolean fetchReceiverById(Connection connection, int receiverID) {
+        try (PreparedStatement pstmt = connection.prepareStatement("SELECT * FROM receiver WHERE id = ?")) {
+            pstmt.setInt(1, receiverID);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    return true;
+                }
+            }
+        } catch (SQLException e) {
+            System.out.println("Error fetching receiver by ID: " + e.getMessage());
+        }
+        return false;
+    }
+
+    private boolean getRawMaterialInformation(Connection connection, int quantity, int itemId) {
+        try (PreparedStatement pstmt = connection.prepareStatement("SELECT * FROM raw_materials WHERE id = ?")) {
+            pstmt.setInt(1, itemId);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    int availableQuantity = rs.getInt("quantity");
+                    if (quantity > availableQuantity) {
+                        System.out.println("Insufficient raw materials ("+itemId+") for the order.");
+                        return false;
+                    }
+                } else {
+                    System.out.println("Raw materials for the item not found.");
+                    return false;
+                }
+            }
+        } catch (SQLException e) {
+            System.out.println("Error checking raw materials: " + e.getMessage());
+        }
+        return true;
+    }
+
+    public void updateOrderQuantity(Connection connection, Scanner scanner) {
+        System.out.print("Enter Order ID: ");
+        int orderId = scanner.nextInt();
+        scanner.nextLine(); // Consume newline
+
+        System.out.print("Enter New Quantity: ");
+        int newQuantity = scanner.nextInt();
+        scanner.nextLine(); // Consume newline
+
+        try {
+            // Retrieve the current quantity and itemId for the given orderId
+            String selectOrderQuery = "SELECT quantity, itemId FROM orders WHERE orderId = ?";
+            int currentQuantity = 0;
+            itemId = 0;
+
+            try (PreparedStatement pstmt = connection.prepareStatement(selectOrderQuery)) {
+                pstmt.setInt(1, orderId);
+                try (ResultSet rs = pstmt.executeQuery()) {
+                    if (rs.next()) {
+                        currentQuantity = rs.getInt("quantity");
+                        itemId = rs.getInt("itemId");
+                    } else {
+                        System.out.println("Order not found with ID = " + orderId);
+                        return;
+                    }
+                }
+            }
+
+            // Check the availability of raw materials for the item
+            int additionalQuantityRequired = newQuantity - currentQuantity;
+
+            if (additionalQuantityRequired > 0) { // Only check if the new quantity is greater
+                String rawMaterialsQuery = """
+                    SELECT 
+                        ir.itemId AS ItemID,
+                        r.id AS rawMaterialID,
+                        r.quantity AS available_quantity
+                    FROM items_raw_materials AS ir
+                    JOIN raw_materials AS r ON ir.raw_material_id = r.id
+                    WHERE ir.itemId = ?
+                """;
+
+
+                try (PreparedStatement pstmt = connection.prepareStatement(rawMaterialsQuery)) {
+                    pstmt.setInt(1, itemId);
+                    try (ResultSet rs = pstmt.executeQuery()) {
+                        boolean sufficientMaterials = true;
+
+                        while (rs.next()) {
+                            int rawMaterialId = rs.getInt("rawMaterialID");
+                            int availableQuantity = rs.getInt("available_quantity");
+
+                            if (additionalQuantityRequired > availableQuantity) {
+                                System.out.printf("Insufficient raw material (ID: %d). Required: %d, Available: %d%n",
+                                        rawMaterialId, additionalQuantityRequired, availableQuantity);
+                                sufficientMaterials = false;
+                            }else {
+                                updateRawMaterialQuantity(connection, rawMaterialId, additionalQuantityRequired);
+                            }
+                        }
+                        if (!sufficientMaterials) {
+                            System.out.println("Order update failed due to insufficient raw materials.");
+                            return;
+                        }
+                    }
+                }
+            }
+
+            // Update the order quantity
+            String updateOrderQuery = "UPDATE orders SET quantity = ? WHERE orderId = ?";
+            try (PreparedStatement pstmt = connection.prepareStatement(updateOrderQuery)) {
+                pstmt.setInt(1, newQuantity);
+                pstmt.setInt(2, orderId);
+
+                int rowsUpdated = pstmt.executeUpdate();
+                if (rowsUpdated > 0) {
+                    System.out.println("Order quantity updated successfully!");
+                } else {
+                    System.out.println("Failed to update the order quantity.");
+                }
+            }
+
+        } catch (SQLException e) {
+            System.out.println("Error updating order quantity: " + e.getMessage());
+        } catch (Exception e) {
+            System.out.println("Invalid input: " + e.getMessage());
+            scanner.nextLine(); // Clear buffer in case of invalid input
+        }
+    }
+    private void updateRawMaterialQuantity(Connection connection, int rawMaterialId, int quantity) {
+        String updateRawMaterialQuery = "UPDATE raw_materials SET quantity = quantity - ? WHERE id = ?";
+
+        try (PreparedStatement pstmt = connection.prepareStatement(updateRawMaterialQuery)) {
+            pstmt.setInt(1, quantity);
+            pstmt.setInt(2, rawMaterialId);
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            System.out.println("Error updating raw material quantity: " + e.getMessage());
+        }
+    }
+
 }

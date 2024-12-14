@@ -3,7 +3,7 @@ package org.example.models;
 import java.sql.*;
 import java.util.Scanner;
 
-public class FinishGoods {
+public class FinishGoods implements EntityHandler {
     private int itemId;
     private String name;
     private int quantity;
@@ -11,8 +11,12 @@ public class FinishGoods {
     private int id;
     private int isFullFilled;
 
+    public FinishGoods(Connection connection) {
+        createTablesIfNotExists(connection);
+    }
+
     static private void createTablesIfNotExists(Connection connection) {
-        String createOrdersTableQuery = """
+        String createFinishGoodsTableQuery = """
             CREATE TABLE IF NOT EXISTS finish_goods (
                 orderId INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL,
@@ -27,11 +31,34 @@ public class FinishGoods {
         """;
 
         try (Statement stmt = connection.createStatement()) {
-            stmt.execute(createOrdersTableQuery);
+            stmt.execute(createFinishGoodsTableQuery);
         } catch (SQLException e) {
-            System.out.println("Error creating Order table: " + e.getMessage());
+            System.out.println("Error creating Finish Goods table: " + e.getMessage());
         }
     }
+
+    @Override
+    public void showMenu() {
+        System.out.println("Finish Goods Management Menu:");
+        System.out.println("1. Display Finish Goods");
+        System.out.println("2. Find Finish Good by ID");
+    }
+
+    @Override
+    public void handleChoice(int choice, Connection connection, Scanner scanner) {
+        switch (choice) {
+            case 1:
+                displayOrders(connection);
+                break;
+            case 2:
+                findById(connection, scanner, "finish_goods");
+                break;
+            default:
+                System.out.println("Invalid choice. Please try again.");
+                break;
+        }
+    }
+
     public void displayOrders(Connection connection) {
         createTablesIfNotExists(connection);
         String fetchOrdersQuery = "SELECT * FROM finish_goods";
@@ -39,28 +66,29 @@ public class FinishGoods {
         try (Statement stmt = connection.createStatement();
              ResultSet rs = stmt.executeQuery(fetchOrdersQuery)) {
 
-            System.out.println("OrderID | Name       | Quantity | ItemID | ReceiverID | Fulfilled | CreatedAt");
+            System.out.println("ID | Name       | Quantity | ItemID | ReceiverID | Fulfilled | CreatedAt");
             System.out.println("---------------------------------------------------------------------------------");
 
-                while (rs.next()) {
-                    int orderId = rs.getInt("orderId");
-                    String name = rs.getString("name");
-                    int quantity = rs.getInt("quantity");
-                    int itemId = rs.getInt("itemId");
-                    int receiverId = rs.getInt("receiverId");
-                    int fulfilled = rs.getInt("fulfilled");
-                    String createdAt = rs.getString("createdAt");
+            while (rs.next()) {
+                int orderId = rs.getInt("orderId");
+                String name = rs.getString("name");
+                int quantity = rs.getInt("quantity");
+                int itemId = rs.getInt("itemId");
+                int receiverId = rs.getInt("receiverId");
+                int fulfilled = rs.getInt("fulfilled");
+                String createdAt = rs.getString("createdAt");
 
-                    // Print the details of the current row
-                    System.out.printf("%7d | %-10s | %8d | %6d | %10d | %9s | %s%n",
-                            orderId, name, quantity, itemId, receiverId, (fulfilled == 1 ? "Yes" : "No"), createdAt);
-                }
+                // Print the details of the current row
+                System.out.printf("%d | %-10s | %8d | %6d | %10d | %9s | %s%n",
+                        orderId, name, quantity, itemId, receiverId, (fulfilled == 1 ? "Yes" : "No"), createdAt);
+            }
 
         } catch (SQLException e) {
             System.out.println("Error fetching orders: " + e.getMessage());
         }
     }
-    public void findById(Connection connection, Scanner scanner,String type) throws SQLException {
+
+    public void findById(Connection connection, Scanner scanner, String type) {
         createTablesIfNotExists(connection);
         System.out.print("Enter ID : ");
         id = scanner.nextInt();
@@ -83,8 +111,8 @@ public class FinishGoods {
                         isFullFilled = rs.getInt("fulfilled");
 
                         // Print the details of the current row
-                        System.out.printf("%d | %-10s | %8d | %8d | %8d | %s",
-                                id, name, quantity,receiverID,itemId,isFullFilled == 1 ? "Yes" : "No");
+                        System.out.printf("%d | %-10s | %8d | %8d | %8d | %s%n",
+                                id, name, quantity, receiverID, itemId, isFullFilled == 1 ? "Yes" : "No");
                     } while (rs.next());
                     System.out.println();
                 } else {
@@ -93,11 +121,6 @@ public class FinishGoods {
             }
         } catch (SQLException e) {
             System.out.println("Error finding " + type + ": " + e.getMessage());
-            throw e;
         }
     }
-    public void AddFinishGoods(Connection connection, Scanner scanner,String type) throws SQLException {
-
-    }
 }
-

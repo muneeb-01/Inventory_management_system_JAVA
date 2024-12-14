@@ -1,64 +1,85 @@
 package org.example.models;
 
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.Scanner;
-public class User {
-    private int Id;
-    private String name;
-    private String contactInfo;
 
-    public void AddUser(Connection connection, Scanner scanner) throws SQLException {}
-    public void DeleteUser(Connection connection, Scanner scanner) throws SQLException {}
-    public void findAll(Connection connection, String type) throws SQLException {
-        String selectAllQuery = "SELECT * FROM " + type;
+public abstract class User implements EntityHandler {
+    protected int id;
+    protected String name;
+    protected String contactInfo;
 
-        try (Statement stmt = connection.createStatement();
-             ResultSet rs = stmt.executeQuery(selectAllQuery)) {
-            System.out.println("ID\tName\tContact");
-            System.out.println("------------------------------");
+    User(Connection connection) {
+        createTableIfNotExists(connection);
+    }
 
+    // Abstract methods for subclass-specific behavior
+    public abstract String getTableName();
+
+    public abstract void addUser(Connection connection, Scanner scanner) throws SQLException;
+
+    public abstract void deleteUser(Connection connection, Scanner scanner) throws SQLException;
+
+    // Common methods for viewing all and finding by ID
+    public void findAll(Connection connection) throws SQLException {
+        String query = "SELECT * FROM " + getTableName();
+        try (PreparedStatement stmt = connection.prepareStatement(query);
+             ResultSet rs = stmt.executeQuery()) {
+            System.out.println("ID\tName\t\tContact");
+            System.out.println("------------------------------------");
             while (rs.next()) {
                 int id = rs.getInt("id");
                 String name = rs.getString("name");
                 String contact = rs.getString("contact");
-
-                System.out.println(id + "\t" + name + "\t" + contact);
+                System.out.printf("%d\t%-10s\t%s\n", id, name, contact);
             }
-
         } catch (SQLException e) {
-            System.out.println("Error fetching users: " + e.getMessage());
+            System.out.println("Error retrieving records: " + e.getMessage());
             throw e;
         }
     }
-    public void findById(Connection connection, Scanner scanner, String type) throws SQLException {
-        System.out.print("Enter ID : ");
-        int id = scanner.nextInt();
-        scanner.nextLine();
 
-        String selectQuery = "SELECT * FROM " + type + " WHERE id = ?";
-        try (PreparedStatement stmt = connection.prepareStatement(selectQuery)) {
+    public void findById(Connection connection, Scanner scanner) throws SQLException {
+        System.out.print("Enter ID: ");
+        int id = scanner.nextInt();
+        scanner.nextLine(); // Consume newline
+
+        String query = "SELECT * FROM " + getTableName() + " WHERE id = ?";
+        try (PreparedStatement stmt = connection.prepareStatement(query)) {
             stmt.setInt(1, id);
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
-                    System.out.println("ID | Name         | Contact ");
-                    System.out.println("---------------------------------------------------------------------------------");
-
+                    System.out.println("ID\tName\t\tContact");
+                    System.out.println("------------------------------------");
                     do {
-                        id = rs.getInt("id");
+                        int userId = rs.getInt("id");
                         String name = rs.getString("name");
-                        int contact = rs.getInt("contact");
-
-                        // Print the details of the current row
-                        System.out.printf("%7d | %-10s | %8d",
-                                id, name, contact);
+                        String contact = rs.getString("contact");
+                        System.out.printf("%d\t%-10s\t%s\n", userId, name, contact);
                     } while (rs.next());
                 } else {
-                    System.out.println("No " + type + " found with ID = " + id);
+                    System.out.println("No record found with ID " + id);
                 }
             }
         } catch (SQLException e) {
-            System.out.println("Error finding " + type + ": " + e.getMessage());
+            System.out.println("Error retrieving record: " + e.getMessage());
             throw e;
+        }
+    }
+
+    protected void createTableIfNotExists(Connection connection) {
+        String createTableQuery = "CREATE TABLE IF NOT EXISTS " + getTableName() + " (" +
+                "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                "name TEXT NOT NULL, " +
+                "contact TEXT NOT NULL)";
+
+        try (PreparedStatement stmt = connection.prepareStatement(createTableQuery)) {
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            System.out.println("Error creating table for " + getTableName());
+            e.printStackTrace();
         }
     }
 

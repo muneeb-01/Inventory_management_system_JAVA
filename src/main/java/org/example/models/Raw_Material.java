@@ -3,12 +3,54 @@ package org.example.models;
 import java.sql.*;
 import java.util.Scanner;
 
-public class Raw_Material {
+public class Raw_Material implements EntityHandler {
     private int id;
     private String name;
     private int quantity;
     private int supplierId;
     private int price;
+
+    @Override
+    public void showMenu() {
+        System.out.println("Raw Material Management Menu:");
+        System.out.println("1. Add Raw Material");
+        System.out.println("2. Delete Raw Material");
+        System.out.println("3. Find All Raw Materials");
+        System.out.println("4. Find Raw Material by ID");
+        System.out.println("5. Update Raw Material");
+        System.out.println("6. Exit");
+        System.out.print("Enter your choice: ");
+    }
+
+    @Override
+    public void handleChoice(int choice, Connection connection, Scanner scanner) {
+        try {
+            switch (choice) {
+                case 1:
+                    addRawMaterial(connection, scanner);
+                    break;
+                case 2:
+                    deleteRawMaterial(connection, scanner);
+                    break;
+                case 3:
+                    findAll(connection);
+                    break;
+                case 4:
+                    findById(connection, scanner, "raw_materials");
+                    break;
+                case 5:
+                    updateRawMaterial(connection, scanner);
+                    break;
+                case 6:
+                    System.out.println("Exiting...");
+                    break;
+                default:
+                    System.out.println("Invalid choice! Please try again.");
+            }
+        } catch (SQLException e) {
+            System.out.println("Error handling choice: " + e.getMessage());
+        }
+    }
 
     public void addRawMaterial(Connection connection, Scanner scanner) throws SQLException {
         System.out.print("Enter Supplier ID: ");
@@ -62,6 +104,7 @@ public class Raw_Material {
             throw e;  // Propagate the exception for further handling
         }
     }
+
     private void createTableIfNotExists(Connection connection) {
         String createTableQuery = "CREATE TABLE IF NOT EXISTS raw_materials (" +
                 "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
@@ -77,6 +120,7 @@ public class Raw_Material {
             System.out.println("Error creating Raw Material's table");
         }
     }
+
     public void deleteRawMaterial(Connection connection, Scanner scanner) throws SQLException {
         createTableIfNotExists(connection);
         System.out.print("Enter Supplier ID: ");
@@ -96,10 +140,11 @@ public class Raw_Material {
             } else {
                 System.out.println("No matching raw material found.");
             }
-        }catch (SQLException e) {
+        } catch (SQLException e) {
             System.out.println("Error deleting raw material.");
         }
     }
+
     public void findAll(Connection connection) throws SQLException {
         createTableIfNotExists(connection);
         String selectAllQuery = "SELECT * FROM  raw_materials";
@@ -124,7 +169,8 @@ public class Raw_Material {
             throw e;
         }
     }
-    public void findById(Connection connection, Scanner scanner,String type) throws SQLException {
+
+    public void findById(Connection connection, Scanner scanner, String type) throws SQLException {
         createTableIfNotExists(connection);
         System.out.print("Enter ID : ");
         id = scanner.nextInt();
@@ -158,4 +204,59 @@ public class Raw_Material {
             throw e;
         }
     }
+
+    public void updateRawMaterial(Connection connection, Scanner scanner) throws SQLException {
+        createTableIfNotExists(connection);
+        System.out.print("Enter Raw Material ID to update: ");
+        int materialId = scanner.nextInt();
+        scanner.nextLine(); // Consume newline
+
+        System.out.print("Enter new Price: ");
+        int newPrice = scanner.nextInt();
+
+        System.out.print("Enter new Quantity: ");
+        int newQuantity = scanner.nextInt();
+        scanner.nextLine(); // Consume newline
+
+        // Fetch the current quantity
+        String selectQuery = "SELECT quantity FROM raw_materials WHERE id = ?";
+        int currentQuantity;
+        try (PreparedStatement selectStmt = connection.prepareStatement(selectQuery)) {
+            selectStmt.setInt(1, materialId);
+            try (ResultSet rs = selectStmt.executeQuery()) {
+                if (rs.next()) {
+                    currentQuantity = rs.getInt("quantity");
+                } else {
+                    System.out.println("Raw material with ID " + materialId + " not found.");
+                    return;
+                }
+            }
+        } catch (SQLException e) {
+            System.out.println("Error fetching current quantity: " + e.getMessage());
+            throw e;
+        }
+
+        int updatedQuantity = currentQuantity + newQuantity;
+
+        if (updatedQuantity < 0 ) updatedQuantity = 0;
+
+        String updateQuery = "UPDATE raw_materials SET price = ?, quantity = ? WHERE id = ?";
+
+        try (PreparedStatement stmt = connection.prepareStatement(updateQuery)) {
+            stmt.setInt(1, newPrice);
+            stmt.setInt(2, updatedQuantity);
+            stmt.setInt(3, materialId);
+
+            int rowsUpdated = stmt.executeUpdate();
+            if (rowsUpdated > 0) {
+                System.out.println("Raw material updated successfully.");
+            } else {
+                System.out.println("Failed to update raw material.");
+            }
+        } catch (SQLException e) {
+            System.out.println("Error updating raw material: " + e.getMessage());
+            throw e;
+        }
+    }
+
 }

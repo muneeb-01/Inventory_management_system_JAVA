@@ -3,79 +3,188 @@ package org.example.models;
 import java.sql.*;
 import java.util.Scanner;
 
-public class Items {
+public class Items implements EntityHandler {
     private int itemId;
     private String name;
-    private int price_per_unit;
-    private int supplierID;
+    private int pricePerUnit;
+    private int supplierId;
 
-    public String getName() { return name; }
-    public void addItem(Connection connection, Scanner scanner) throws SQLException {
-    createTablesIfNotExists(connection);
-    System.out.print("Number of Constituents of Item: ");
-    int length = scanner.nextInt();
-    scanner.nextLine();
-
-    int[] raw_material_id = new int[length];
-
-    for (int i = 0; i < length; i++) {
-        int num = i + 1;
-        System.out.print("Enter the Raw Material "+ num +" ID: ");
-        raw_material_id[i] = scanner.nextInt();
-        scanner.nextLine();
+    public String getName() {
+        return name;
     }
 
-    for (int i = 0; i < length; i++) {
-        String checkRawMaterialQuery = "SELECT 1 FROM raw_materials WHERE id = ?";
-        try (PreparedStatement checkStmt = connection.prepareStatement(checkRawMaterialQuery)) {
-            checkStmt.setInt(1, raw_material_id[i]);
-            try (ResultSet resultSet = checkStmt.executeQuery()) {
-                if (!resultSet.next()) {
-                    System.out.println("Raw Material with ID " + raw_material_id + " does not exist. Cannot add Item.");
-                    return;
-                }
+    @Override
+    public void showMenu() {
+        System.out.println("Items Management Menu:");
+        System.out.println("1. Add Item");
+        System.out.println("2. Delete Item");
+        System.out.println("3. View All Items");
+        System.out.println("4. Find Item by ID");
+        System.out.println("5. Exit");
+    }
+
+    @Override
+    public void handleChoice(int choice, Connection connection, Scanner scanner) {
+        try {
+            switch (choice) {
+                case 1 -> addItem(connection, scanner);
+                case 2 -> deleteItems(connection, scanner);
+                case 3 -> findAll(connection);
+                case 4 -> findById(connection, scanner);
+                case 5 -> System.out.println("Exiting Items Management...");
+                default -> System.out.println("Invalid choice. Please try again.");
             }
         } catch (SQLException e) {
-            System.out.println("Error checking supplier existence: " + e.getMessage());
-            throw e;
+            System.out.println("Error: " + e.getMessage());
         }
     }
 
+    public void addItem(Connection connection, Scanner scanner) throws SQLException {
+        createTablesIfNotExists(connection);
+
+        System.out.print("Enter Number of Constituents of Item: ");
+        int length = scanner.nextInt();
+        scanner.nextLine();
+
+        int[] rawMaterialIds = getRawMaterialIds(scanner, length);
+
+        if (!validateRawMaterials(connection, rawMaterialIds)) {
+            System.out.println("Invalid Raw Material IDs. Cannot add item.");
+            return;
+        }
+
+        supplierId = getSupplierId(scanner, connection);
+
+        if (supplierId == -1) {
+            System.out.println("Invalid Supplier ID. Cannot add item.");
+            return;
+        }
+
+        name = getItemName(scanner);
+        pricePerUnit = getPricePerUnit(scanner);
+
+        insertItemIntoDatabase(connection);
+        linkRawMaterialsToItem(connection, rawMaterialIds);
+    }
+
+    public void deleteItems(Connection connection, Scanner scanner) throws SQLException {
+        createTablesIfNotExists(connection);
+
+        int itemIdToDelete = getItemId(scanner);
+
+        if (itemIdToDelete != -1) {
+            deleteItemFromDatabase(connection, itemIdToDelete);
+        } else {
+            System.out.println("Invalid Item ID.");
+        }
+    }
+
+    public void findAll(Connection connection) throws SQLException {
+        createTablesIfNotExists(connection);
+
+        String selectAllQuery = "SELECT * FROM items";
+        try (Statement stmt = connection.createStatement();
+             ResultSet rs = stmt.executeQuery(selectAllQuery)) {
+
+            displayItems(rs);
+        }
+    }
+
+    public void findById(Connection connection, Scanner scanner) throws SQLException {
+        createTablesIfNotExists(connection);
+
+        int itemIdToFind = getItemId(scanner);
+
+        if (itemIdToFind != -1) {
+            String selectQuery = "SELECT * FROM items WHERE itemId = ?";
+            try (PreparedStatement stmt = connection.prepareStatement(selectQuery)) {
+                stmt.setInt(1, itemIdToFind);
+                try (ResultSet rs = stmt.executeQuery()) {
+                    displayItemDetails(rs);
+                }
+            }
+        } else {
+            System.out.println("Invalid Item ID.");
+        }
+    }
+
+    private void createTablesIfNotExists(Connection connection) throws SQLException {
+        String createItemsTable = """
+                CREATE TABLE IF NOT EXISTS items (
+                    itemId INTEGER PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    price_per_unit INTEGER NOT NULL,
+                    supplier_id INTEGER,
+                    FOREIGN KEY (supplier_id) REFERENCES suppliers(id)
+                )
+                """;
+
+        String createItemsRawMaterialsTable = """
+                CREATE TABLE IF NOT EXISTS items_raw_materials (
+                    itemId INTEGER,
+                    raw_material_id INTEGER,
+                    FOREIGN KEY (itemId) REFERENCES items(itemId),
+                    FOREIGN KEY (raw_material_id) REFERENCES raw_materials(id),
+                    PRIMARY KEY (itemId, raw_material_id)
+                )
+                """;
+
+        try (Statement stmt = connection.createStatement()) {
+            stmt.execute(createItemsTable);
+            stmt.execute(createItemsRawMaterialsTable);
+        }
+    }
+
+    private int[] getRawMaterialIds(Scanner scanner, int length) {
+        int[] rawMaterialIds = new int[length];
+        for (int i = 0; i < length; i++) {
+            System.out.print("Enter the Raw Material " + (i + 1) + " ID: ");
+            rawMaterialIds[i] = scanner.nextInt();
+            scanner.nextLine();
+        }
+        return rawMaterialIds;
+    }
+
+    private boolean validateRawMaterials(Connection connection, int[] rawMaterialIds) throws SQLException {
+        for (int rawMaterialId : rawMaterialIds) {
+            if (!existsInTable(connection, "raw_materials", "id", rawMaterialId)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private int getSupplierId(Scanner scanner, Connection connection) throws SQLException {
         System.out.print("Enter the Supplier ID: ");
         int supplierId = scanner.nextInt();
         scanner.nextLine();
 
-        String checkSupplierQuery = "SELECT 1 FROM suppliers WHERE id = ?";
-        try (PreparedStatement checkStmt = connection.prepareStatement(checkSupplierQuery)) {
-            checkStmt.setInt(1, supplierId);
-            try (ResultSet resultSet = checkStmt.executeQuery()) {
-                if (!resultSet.next()) {
-                    System.out.println("Supplier with ID " + supplierId + " does not exist. Cannot add raw material.");
-                    return;
-                }
-            }
-        } catch (SQLException e) {
-            System.out.println("Error checking supplier existence: " + e.getMessage());
-            throw e;
+        if (existsInTable(connection, "suppliers", "id", supplierId)) {
+            return supplierId;
         }
+        return -1;
+    }
 
+    private String getItemName(Scanner scanner) {
         System.out.print("Enter the Item Name: ");
-        String name = scanner.nextLine();
+        return scanner.nextLine();
+    }
 
+    private int getPricePerUnit(Scanner scanner) {
         System.out.print("Enter the Item's Price per Unit: ");
-        int price_per_unit = scanner.nextInt();
-        scanner.nextLine();
+        return scanner.nextInt();
+    }
 
-        String insertQuery = "INSERT INTO items (name,price_per_unit,supplier_id) VALUES (?, ?, ?)";
-
-        try (PreparedStatement stmt = connection.prepareStatement(insertQuery)) {
+    private void insertItemIntoDatabase(Connection connection) throws SQLException {
+        String insertItemQuery = "INSERT INTO items (name, price_per_unit, supplier_id) VALUES (?, ?, ?)";
+        try (PreparedStatement stmt = connection.prepareStatement(insertItemQuery, Statement.RETURN_GENERATED_KEYS)) {
             stmt.setString(1, name);
-            stmt.setInt(2, price_per_unit);
+            stmt.setInt(2, pricePerUnit);
             stmt.setInt(3, supplierId);
             int rowsInserted = stmt.executeUpdate();
 
             if (rowsInserted > 0) {
-                System.out.println("Raw material added successfully.");
+                System.out.println("Item added successfully.");
                 try (ResultSet generatedKeys = stmt.getGeneratedKeys()) {
                     if (generatedKeys.next()) {
                         itemId = generatedKeys.getInt(1);
@@ -85,111 +194,79 @@ public class Items {
                     }
                 }
             } else {
-                System.out.println("Failed to add raw material.");
+                System.out.println("Failed to add item.");
             }
-
-        } catch (SQLException e) {
-            System.out.println("Error adding raw material: " + e.getMessage());
-            throw e;
         }
+    }
 
-        for (int i = 0; i<length; i++) {
-            String items_raw_materials_query = "INSERT INTO items_raw_materials (itemId,raw_material_id) VALUES (?,?)";
-            try(PreparedStatement stmt = connection.prepareStatement(items_raw_materials_query)) {
+    private void linkRawMaterialsToItem(Connection connection, int[] rawMaterialIds) throws SQLException {
+        String itemsRawMaterialsQuery = "INSERT INTO items_raw_materials (itemId, raw_material_id) VALUES (?, ?)";
+        for (int rawMaterialId : rawMaterialIds) {
+            try (PreparedStatement stmt = connection.prepareStatement(itemsRawMaterialsQuery)) {
                 stmt.setInt(1, itemId);
-                stmt.setInt(2, raw_material_id[i]);
+                stmt.setInt(2, rawMaterialId);
                 stmt.executeUpdate();
-            }
-            catch (SQLException e){
-                System.out.println("Error adding making relation between Item and Raw Material.");
+            } catch (SQLException e) {
+                System.out.println("Error linking item and raw materials: " + e.getMessage());
             }
         }
     }
-    static private void createTablesIfNotExists(Connection connection) throws SQLException {
-        String createItemsTableQuery = "CREATE TABLE IF NOT EXISTS items (itemId INTEGER PRIMARY KEY, name TEXT NOT NULL, price_per_unit INTEGER NOT NULL,supplier_id INTEGER, FOREIGN KEY(supplier_id) REFERENCES suppliers(id))";
-        String createItemsRawMaterialTableQuery = "CREATE TABLE IF NOT EXISTS items_raw_materials (itemId INTEGER, raw_material_id INTEGER, FOREIGN KEY(itemId) REFERENCES items(itemId), FOREIGN KEY(raw_material_id) REFERENCES raw_materials(id),PRIMARY KEY(itemId, raw_material_id))";
-        try(Statement stmt = connection.createStatement()) {
-            stmt.execute(createItemsTableQuery);
-            stmt.execute(createItemsRawMaterialTableQuery);
-        }
-        catch (SQLException e) {
-            System.out.println("Error creating Item's table");
-        }
 
-    }
-    public void findAll(Connection connection) throws SQLException {
-        createTablesIfNotExists(connection);
-        String selectAllQuery = "SELECT * FROM  items";
-
-        try (Statement stmt = connection.createStatement();
-             ResultSet rs = stmt.executeQuery(selectAllQuery)) {
-            System.out.println("Item ID\tName\t\tSupplier ID\t\tPrice per Unit\tQuantity");
-            System.out.println("---------------------------------------------------------");
-
-            while (rs.next()) {
-                int id = rs.getInt("itemId");
-                String name = rs.getString("name");
-                String supplierId = rs.getString("supplier_id");
-                int price = rs.getInt("price_per_unit");
-                System.out.println(id + "\t" + name + "\t" + supplierId + "\t" + price + "\t");
-            }
-
-        } catch (SQLException e) {
-            System.out.println("Error fetching users: " + e.getMessage());
-            throw e;
-        }
-    }
-    public void deleteItems(Connection connection, Scanner scanner) throws SQLException {
-        createTablesIfNotExists(connection);
+    private int getItemId(Scanner scanner) {
         System.out.print("Enter Item ID: ");
-        int ItemId = scanner.nextInt();
-        scanner.nextLine();
+        return scanner.nextInt();
+    }
 
-        try (PreparedStatement stmt = connection.prepareStatement("DELETE FROM items WHERE itemId = ?")) {
-            stmt.setInt(1, itemId);
+    private void deleteItemFromDatabase(Connection connection, int itemIdToDelete) throws SQLException {
+        String deleteQuery = "DELETE FROM items WHERE itemId = ?";
+        try (PreparedStatement stmt = connection.prepareStatement(deleteQuery)) {
+            stmt.setInt(1, itemIdToDelete);
             int rowsDeleted = stmt.executeUpdate();
             if (rowsDeleted > 0) {
                 System.out.println("Item deleted successfully.");
             } else {
-                System.out.println("No matching Item found.");
+                System.out.println("No matching item found.");
             }
-        }catch (SQLException e) {
-            System.out.println("Error deleting Item.");
         }
     }
-    public void findById(Connection connection, Scanner scanner,String type) throws SQLException {
-        createTablesIfNotExists(connection);
-        System.out.print("Enter ID : ");
-        itemId = scanner.nextInt();
-        scanner.nextLine();
 
-        String selectQuery = "SELECT * FROM " + type + " WHERE itemId = ?";
-        try (PreparedStatement stmt = connection.prepareStatement(selectQuery)) {
-            stmt.setInt(1, itemId);
+    private void displayItems(ResultSet rs) throws SQLException {
+        System.out.println("Item ID\tName\t\tSupplier ID\tPrice per Unit");
+        System.out.println("------------------------------------------------");
+
+        while (rs.next()) {
+            int id = rs.getInt("itemId");
+            String name = rs.getString("name");
+            int supplierId = rs.getInt("supplier_id");
+            int price = rs.getInt("price_per_unit");
+            System.out.printf("%d\t%-10s\t%d\t\t%d\n", id, name, supplierId, price);
+        }
+    }
+
+    private void displayItemDetails(ResultSet rs) throws SQLException {
+        if (rs.next()) {
+            System.out.println("Item ID\tName\t\tPrice per Unit\tSupplier ID");
+            System.out.println("------------------------------------------------");
+
+            do {
+                int id = rs.getInt("itemId");
+                String name = rs.getString("name");
+                int price = rs.getInt("price_per_unit");
+                int supplierId = rs.getInt("supplier_id");
+                System.out.printf("%d\t%-10s\t%d\t\t%d\n", id, name, price, supplierId);
+            } while (rs.next());
+        } else {
+            System.out.println("No item found with the provided ID.");
+        }
+    }
+
+    private boolean existsInTable(Connection connection, String tableName, String columnName, int value) throws SQLException {
+        String query = "SELECT 1 FROM " + tableName + " WHERE " + columnName + " = ?";
+        try (PreparedStatement stmt = connection.prepareStatement(query)) {
+            stmt.setInt(1, value);
             try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) {
-                    System.out.println("ID | Name         | Price Per Unit   | Supplier ID   ");
-                    System.out.println("---------------------------------------------------------------------------------");
-
-                    do {
-                        itemId = rs.getInt("itemId");
-                        name = rs.getString("name");
-                        price_per_unit = rs.getInt("price_per_unit");
-                        supplierID = rs.getInt("supplier_id");
-
-                        // Print the details of the current row
-                        System.out.printf("%d | %-10s | %8d | %8d ",
-                                itemId, name, price_per_unit, supplierID);
-                    } while (rs.next());
-                    System.out.println();
-                } else {
-                    System.out.println("No " + type + " found with ID = " + itemId);
-                }
+                return rs.next();
             }
-        } catch (SQLException e) {
-            System.out.println("Error finding " + type + ": " + e.getMessage());
-            throw e;
         }
     }
-
 }
