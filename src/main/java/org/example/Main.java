@@ -27,6 +27,8 @@ public class Main {
     }
 
     static void showMainMenu() {
+
+        System.out.printf("%n %50s %n ","Supply Chain Management System");
         System.out.println("\nMain Menu:");
         System.out.println("1. Supplier");
         System.out.println("2. Receiver");
@@ -49,9 +51,16 @@ public class Main {
             case 6 -> entityHandler = new FinishGoods(connection);
             default -> System.out.println("Invalid choice. Please try again.");
         }
-
         if (entityHandler != null) {
             runEntityMenu(entityHandler, connection, scanner);
+        }else{
+            try{
+                if(connection != null) {
+                    connection.close();
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
         }
     }
 

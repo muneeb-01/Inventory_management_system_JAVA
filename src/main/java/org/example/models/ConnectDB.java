@@ -11,7 +11,6 @@ public class ConnectDB {
         String url = "jdbc:sqlite:mydb.db";
         try{
             connection = DriverManager.getConnection(url);
-            System.out.println("Connected to database");
         }
         catch (SQLException e){
             e.printStackTrace();
@@ -19,17 +18,5 @@ public class ConnectDB {
     }
     public Connection getConnection() {
         return connection;
-    }
-    public void closeConnection() {
-        try{
-            if (connection != null) {
-                connection.close();
-                System.out.println("disconnected from database");
-            }
-        }
-        catch (SQLException e) {
-            e.printStackTrace();
-
-        }
     }
 }
