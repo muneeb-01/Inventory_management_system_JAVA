@@ -42,7 +42,8 @@ public class Main {
         System.out.println("2. Receiver");
         System.out.println("3. RawMaterial");
         System.out.println("4. Item");
-        System.out.println("5. AddOrder");
+        System.out.println("5. Order");
+        System.out.println("6. Finish Goods");
         System.out.println("Press 'Esc' to Exit");
     }
     static private  void processMainMenuChoice(int userInput, Connection connection, Scanner scanner, Main main) {
@@ -52,10 +53,10 @@ public class Main {
             case '3': main.runEntityMenu(new Raw_Material(), "Raw Material", connection, scanner); break;
             case '4': main.runEntityMenu(new Items(), "Item", connection, scanner); break;
             case '5': main.runEntityMenu(new Order(), "Order", connection, scanner); break;
+            case '6': main.runEntityMenu(new FinishGoods(), "Finish Goods", connection, scanner); break;
             default: System.out.println("Invalid choice. Please enter a valid option or press 'Esc' to exit.");
         }
     }
-
     private void runEntityMenu(Object entity, String entityName, Connection connection, Scanner scanner) {
         int userInput;
 
@@ -77,22 +78,48 @@ public class Main {
         }
     }
     private void showEntityMenu(String entityName) {
-        System.out.println("Choose an option for " + entityName + ":");
-        System.out.println("1. Add " + entityName);
-        System.out.println("2. Delete " + entityName);
-        System.out.println("3. View All " + entityName + "s");
-        System.out.println("4. Get " + entityName + " by ID.");
+        if (!entityName.equals("Finish Goods")) {
+            System.out.println("Choose an option for " + entityName + ":");
+            System.out.println("1. Add " + entityName);
+            System.out.println("2. Delete " + entityName);
+            System.out.println("3. View All " + entityName + "s");
+            System.out.println("4. Get " + entityName + " by ID.");
+            if (entityName.equals("Order")) {
+                System.out.println("5. Order Completion.");
+            }
+        }
+        else {
+            System.out.println("1. View All " + entityName);
+            System.out.println("2. Get " + entityName + " by ID.");
+         }
 
         System.out.println("Press 'Esc' to Exit");
     }
     private void handleEntityChoice(Object entity, int userInput, Connection connection, Scanner scanner) {
         try {
-            switch (userInput) {
-                case '1': addEntity(entity, connection, scanner); break;
-                case '2': deleteEntity(entity, connection, scanner); break;
-                case '3': viewAllEntities(entity, connection); break;
-                case '4': getEntityById(entity,connection,scanner); break;
-                default: System.out.println("Invalid choice. Please enter a valid number or press 'Esc' to exit."); break;
+            if (entity instanceof FinishGoods) {
+                switch (userInput){
+                    case '1' : viewAllEntities(entity,connection); break;
+                    case '2' : getEntityById(entity,connection,scanner); break;
+                    default: System.out.println("Invalid choice. Please enter a valid number or press 'Esc' to exit."); break;
+                }
+            }else if (entity instanceof Order) {
+                switch (userInput) {
+                    case '1': addEntity(entity, connection, scanner); break;
+                    case '2': deleteEntity(entity, connection, scanner); break;
+                    case '3': viewAllEntities(entity, connection); break;
+                    case '4': getEntityById(entity,connection,scanner); break;
+                    case '5': OrderCompletion(entity,connection, scanner);
+                    default: System.out.println("Invalid choice. Please enter a valid number or press 'Esc' to exit."); break;
+                }
+            }else{
+                switch (userInput) {
+                    case '1': addEntity(entity, connection, scanner); break;
+                    case '2': deleteEntity(entity, connection, scanner); break;
+                    case '3': viewAllEntities(entity, connection); break;
+                    case '4': getEntityById(entity,connection,scanner); break;
+                    default: System.out.println("Invalid choice. Please enter a valid number or press 'Esc' to exit."); break;
+                }
             }
         } catch (SQLException e) {
             System.out.println("Error with database operation.");
@@ -135,6 +162,8 @@ public class Main {
             ((Items) entity).findAll(connection);
         } else if (entity instanceof Order) {
             ((Order) entity).displayOrders(connection);
+        } else if (entity instanceof FinishGoods) {
+            ((FinishGoods) entity).displayOrders(connection);
         }
     }
     private void getEntityById(Object entity, Connection connection,Scanner scanner) throws SQLException {
@@ -150,6 +179,14 @@ public class Main {
         }
         else if (entity instanceof Items) {
             ((Items) entity).findById(connection,scanner,"items");
+        }
+        else if (entity instanceof FinishGoods) {
+            ((FinishGoods) entity).findById(connection,scanner,"finish_goods");
+        }
+    }
+    private void OrderCompletion(Object entity, Connection connection, Scanner scanner){
+        if (entity instanceof Order){
+            ((Order) entity).completion(connection, scanner);
         }
     }
 }
