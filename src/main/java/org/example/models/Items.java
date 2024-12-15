@@ -53,13 +53,6 @@ public class Items implements EntityHandler {
             return;
         }
 
-        supplierId = getSupplierId(scanner, connection);
-
-        if (supplierId == -1) {
-            System.out.println("Invalid Supplier ID. Cannot add item.");
-            return;
-        }
-
         name = getItemName(scanner);
         pricePerUnit = getPricePerUnit(scanner);
 
@@ -114,8 +107,7 @@ public class Items implements EntityHandler {
                     itemId INTEGER PRIMARY KEY,
                     name TEXT NOT NULL,
                     price_per_unit INTEGER NOT NULL,
-                    supplier_id INTEGER,
-                    FOREIGN KEY (supplier_id) REFERENCES suppliers(id)
+                    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
                 """;
 
@@ -154,17 +146,6 @@ public class Items implements EntityHandler {
         return true;
     }
 
-    private int getSupplierId(Scanner scanner, Connection connection) throws SQLException {
-        System.out.print("Enter the Supplier ID: ");
-        int supplierId = scanner.nextInt();
-        scanner.nextLine();
-
-        if (existsInTable(connection, "suppliers", "id", supplierId)) {
-            return supplierId;
-        }
-        return -1;
-    }
-
     private String getItemName(Scanner scanner) {
         System.out.print("Enter the Item Name: ");
         return scanner.nextLine();
@@ -176,11 +157,10 @@ public class Items implements EntityHandler {
     }
 
     private void insertItemIntoDatabase(Connection connection) throws SQLException {
-        String insertItemQuery = "INSERT INTO items (name, price_per_unit, supplier_id) VALUES (?, ?, ?)";
+        String insertItemQuery = "INSERT INTO items (name, price_per_unit) VALUES (?, ?)";
         try (PreparedStatement stmt = connection.prepareStatement(insertItemQuery, Statement.RETURN_GENERATED_KEYS)) {
             stmt.setString(1, name);
             stmt.setInt(2, pricePerUnit);
-            stmt.setInt(3, supplierId);
             int rowsInserted = stmt.executeUpdate();
 
             if (rowsInserted > 0) {
