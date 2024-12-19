@@ -211,29 +211,27 @@ public class Items implements EntityHandler {
     }
 
     private void displayItems(ResultSet rs) throws SQLException {
-        System.out.println("Item ID\tName\t\tSupplier ID\tPrice per Unit");
+        System.out.println("Item ID\tName\tPrice per Unit");
         System.out.println("------------------------------------------------");
 
         while (rs.next()) {
             int id = rs.getInt("itemId");
             String name = rs.getString("name");
-            int supplierId = rs.getInt("supplier_id");
             int price = rs.getInt("price_per_unit");
-            System.out.printf("%d\t%-10s\t%d\t\t%d\n", id, name, supplierId, price);
+            System.out.printf("%d\t%-10s\t%d\n", id, name, price);
         }
     }
 
     private void displayItemDetails(ResultSet rs) throws SQLException {
         if (rs.next()) {
-            System.out.println("Item ID\tName\t\tPrice per Unit\tSupplier ID");
+            System.out.println("Item ID\tName\tPrice per Unit");
             System.out.println("------------------------------------------------");
 
             do {
                 int id = rs.getInt("itemId");
                 String name = rs.getString("name");
                 int price = rs.getInt("price_per_unit");
-                int supplierId = rs.getInt("supplier_id");
-                System.out.printf("%d\t%-10s\t%d\t\t%d\n", id, name, price, supplierId);
+                System.out.printf("%d\t%-10s\t%d\t\n", id, name, price);
             } while (rs.next());
         } else {
             System.out.println("No item found with the provided ID.");
