@@ -6,8 +6,8 @@ import java.util.Scanner;
 public class Items implements EntityHandler {
     private int itemId;
     private String name;
+
     private int pricePerUnit;
-    private int supplierId;
 
     public String getName() {
         return name;
@@ -20,7 +20,7 @@ public class Items implements EntityHandler {
         System.out.println("2. Delete Item");
         System.out.println("3. View All Items");
         System.out.println("4. Find Item by ID");
-        System.out.println("5. Exit");
+        System.out.println("5. Press 'e' or 'Esc' to exit");
     }
 
     @Override
@@ -31,7 +31,7 @@ public class Items implements EntityHandler {
                 case 2 -> deleteItems(connection, scanner);
                 case 3 -> findAll(connection);
                 case 4 -> findById(connection, scanner);
-                case 5 -> System.out.println("Exiting Items Management...");
+
                 default -> System.out.println("Invalid choice. Please try again.");
             }
         } catch (SQLException e) {
@@ -57,7 +57,7 @@ public class Items implements EntityHandler {
         pricePerUnit = getPricePerUnit(scanner);
 
         insertItemIntoDatabase(connection);
-        linkRawMaterialsToItem(connection, rawMaterialIds);
+        linkRawMaterialsToItem(connection, rawMaterialIds, itemId);
     }
 
     public void deleteItems(Connection connection, Scanner scanner) throws SQLException {
@@ -153,7 +153,9 @@ public class Items implements EntityHandler {
 
     private int getPricePerUnit(Scanner scanner) {
         System.out.print("Enter the Item's Price per Unit: ");
-        return scanner.nextInt();
+        int price_per_unit = scanner.nextInt();
+        scanner.nextLine();
+        return price_per_unit;
     }
 
     private void insertItemIntoDatabase(Connection connection) throws SQLException {
@@ -179,13 +181,25 @@ public class Items implements EntityHandler {
         }
     }
 
-    private void linkRawMaterialsToItem(Connection connection, int[] rawMaterialIds) throws SQLException {
-        String itemsRawMaterialsQuery = "INSERT INTO items_raw_materials (itemId, raw_material_id) VALUES (?, ?)";
+    private void linkRawMaterialsToItem(Connection connection, int[] rawMaterialIds,int itemId) throws SQLException {
+        String checkQuery = "SELECT COUNT(*) FROM items_raw_materials WHERE itemId = ? AND raw_material_id = ?";
+        String insertQuery = "INSERT INTO items_raw_materials (itemId, raw_material_id) VALUES (?, ?)";
+
         for (int rawMaterialId : rawMaterialIds) {
-            try (PreparedStatement stmt = connection.prepareStatement(itemsRawMaterialsQuery)) {
-                stmt.setInt(1, itemId);
-                stmt.setInt(2, rawMaterialId);
-                stmt.executeUpdate();
+            try (PreparedStatement checkStmt = connection.prepareStatement(checkQuery)) {
+                checkStmt.setInt(1, itemId);
+                checkStmt.setInt(2, rawMaterialId);
+                ResultSet rs = checkStmt.executeQuery();
+                rs.next();
+                int count = rs.getInt(1);
+
+                if (count == 0) {  // If the combination doesn't already exist, insert it
+                    try (PreparedStatement insertStmt = connection.prepareStatement(insertQuery)) {
+                        insertStmt.setInt(1, itemId);
+                        insertStmt.setInt(2, rawMaterialId);
+                        insertStmt.executeUpdate();
+                    }
+                }
             } catch (SQLException e) {
                 System.out.println("Error linking item and raw materials: " + e.getMessage());
             }
@@ -194,7 +208,9 @@ public class Items implements EntityHandler {
 
     private int getItemId(Scanner scanner) {
         System.out.print("Enter Item ID: ");
-        return scanner.nextInt();
+        int Id = scanner.nextInt();
+        scanner.nextLine();
+        return Id;
     }
 
     private void deleteItemFromDatabase(Connection connection, int itemIdToDelete) throws SQLException {
@@ -224,14 +240,14 @@ public class Items implements EntityHandler {
 
     private void displayItemDetails(ResultSet rs) throws SQLException {
         if (rs.next()) {
-            System.out.println("Item ID\tName\tPrice per Unit");
+            System.out.println("Item ID\tName\t\tPrice per Unit");
             System.out.println("------------------------------------------------");
 
             do {
                 int id = rs.getInt("itemId");
                 String name = rs.getString("name");
                 int price = rs.getInt("price_per_unit");
-                System.out.printf("%d\t%-10s\t%d\t\n", id, name, price);
+                System.out.printf("%d\t%-10s\t%d\n", id, name, price);
             } while (rs.next());
         } else {
             System.out.println("No item found with the provided ID.");
@@ -243,7 +259,7 @@ public class Items implements EntityHandler {
         try (PreparedStatement stmt = connection.prepareStatement(query)) {
             stmt.setInt(1, value);
             try (ResultSet rs = stmt.executeQuery()) {
-                return rs.next();
+                return  rs.next();
             }
         }
     }

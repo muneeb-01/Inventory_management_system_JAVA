@@ -42,6 +42,10 @@ public class FinishGoods implements EntityHandler {
         System.out.println("Finish Goods Management Menu:");
         System.out.println("1. Display Finish Goods");
         System.out.println("2. Find Finish Good by ID");
+        System.out.println("3. Show Delivered Items");
+        System.out.println("4. Show Remaining Finish Goods");
+        System.out.println("5. Update Fulfilled Status");
+        System.out.println("6. Press 'e' or 'Esc' to exit");
     }
 
     @Override
@@ -52,6 +56,15 @@ public class FinishGoods implements EntityHandler {
                 break;
             case 2:
                 findById(connection, scanner, "finish_goods");
+                break;
+            case 3:
+                showDeliveredItems(connection);
+                break;
+            case 4:
+                showRemainingFinishGoods(connection);
+                break;
+            case 5:
+                delivered(connection, scanner);
                 break;
             default:
                 System.out.println("Invalid choice. Please try again.");
@@ -78,7 +91,6 @@ public class FinishGoods implements EntityHandler {
                 int fulfilled = rs.getInt("fulfilled");
                 String createdAt = rs.getString("createdAt");
 
-                // Print the details of the current row
                 System.out.printf("%d | %-10s | %8d | %6d | %10d | %9s | %s%n",
                         orderId, name, quantity, itemId, receiverId, (fulfilled == 1 ? "Yes" : "No"), createdAt);
             }
@@ -110,7 +122,6 @@ public class FinishGoods implements EntityHandler {
                         itemId = rs.getInt("itemId");
                         isFullFilled = rs.getInt("fulfilled");
 
-                        // Print the details of the current row
                         System.out.printf("%d | %-10s | %8d | %8d | %8d | %s%n",
                                 id, name, quantity, receiverID, itemId, isFullFilled == 1 ? "Yes" : "No");
                     } while (rs.next());
@@ -123,4 +134,90 @@ public class FinishGoods implements EntityHandler {
             System.out.println("Error finding " + type + ": " + e.getMessage());
         }
     }
+
+    public void delivered(Connection connection, Scanner scanner) {
+        createTablesIfNotExists(connection);
+
+        System.out.print("Enter Finish Goods ID to mark as delivered: ");
+        int orderId = scanner.nextInt();
+        scanner.nextLine();
+
+        String updateQuery = "UPDATE finish_goods SET fulfilled = 1 WHERE orderId = ?";
+
+        try (PreparedStatement stmt = connection.prepareStatement(updateQuery)) {
+            stmt.setInt(1, orderId);
+
+            int rowsAffected = stmt.executeUpdate();
+
+            if (rowsAffected > 0) {
+                System.out.println("Finish Good with ID " + orderId + " has been marked as delivered.");
+            } else {
+                System.out.println("No Finish Good found with ID " + orderId + ".");
+            }
+
+        } catch (SQLException e) {
+            System.out.println("Error marking Finish Good as delivered: " + e.getMessage());
+        }
+    }
+
+    // Show delivered items (fulfilled = 0)
+    public void showDeliveredItems(Connection connection) {
+        createTablesIfNotExists(connection);
+
+        String fetchDeliveredItemsQuery = "SELECT * FROM finish_goods WHERE fulfilled = 1";
+
+        try (Statement stmt = connection.createStatement();
+             ResultSet rs = stmt.executeQuery(fetchDeliveredItemsQuery)) {
+
+            System.out.println("ID | Name       | Quantity | ItemID | ReceiverID | Fulfilled | CreatedAt");
+            System.out.println("---------------------------------------------------------------------------------");
+
+            while (rs.next()) {
+                int orderId = rs.getInt("orderId");
+                String name = rs.getString("name");
+                int quantity = rs.getInt("quantity");
+                int itemId = rs.getInt("itemId");
+                int receiverId = rs.getInt("receiverId");
+                int fulfilled = rs.getInt("fulfilled");
+                String createdAt = rs.getString("createdAt");
+
+                System.out.printf("%d | %-10s | %8d | %6d | %10d | %9s | %s%n",
+                        orderId, name, quantity, itemId, receiverId, (fulfilled == 1 ? "Yes" : "No"), createdAt);
+            }
+
+        } catch (SQLException e) {
+            System.out.println("Error fetching delivered items: " + e.getMessage());
+        }
+    }
+
+    // Show remaining finish goods (fulfilled = 1)
+    public void showRemainingFinishGoods(Connection connection) {
+        createTablesIfNotExists(connection);
+
+        String fetchRemainingItemsQuery = "SELECT * FROM finish_goods WHERE fulfilled = 0";
+
+        try (Statement stmt = connection.createStatement();
+             ResultSet rs = stmt.executeQuery(fetchRemainingItemsQuery)) {
+
+            System.out.println("ID | Name       | Quantity | ItemID | ReceiverID | Fulfilled | CreatedAt");
+            System.out.println("---------------------------------------------------------------------------------");
+
+            while (rs.next()) {
+                int orderId = rs.getInt("orderId");
+                String name = rs.getString("name");
+                int quantity = rs.getInt("quantity");
+                int itemId = rs.getInt("itemId");
+                int receiverId = rs.getInt("receiverId");
+                int fulfilled = rs.getInt("fulfilled");
+                String createdAt = rs.getString("createdAt");
+
+                System.out.printf("%d | %-10s | %8d | %6d | %10d | %9s | %s%n",
+                        orderId, name, quantity, itemId, receiverId, (fulfilled == 1 ? "Yes" : "No"), createdAt);
+            }
+
+        } catch (SQLException e) {
+            System.out.println("Error fetching remaining items: " + e.getMessage());
+        }
+    }
+
 }

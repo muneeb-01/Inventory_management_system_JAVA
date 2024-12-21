@@ -18,7 +18,7 @@ public class Raw_Material implements EntityHandler {
         System.out.println("3. Find All Raw Materials");
         System.out.println("4. Find Raw Material by ID");
         System.out.println("5. Update Raw Material");
-        System.out.println("6. Exit");
+        System.out.println("6. Press 'e' or 'Esc' to exit");
         System.out.print("Enter your choice: ");
     }
 
@@ -40,9 +40,6 @@ public class Raw_Material implements EntityHandler {
                     break;
                 case 5:
                     updateRawMaterial(connection, scanner);
-                    break;
-                case 6:
-                    System.out.println("Exiting...");
                     break;
                 default:
                     System.out.println("Invalid choice! Please try again.");
@@ -258,5 +255,4 @@ public class Raw_Material implements EntityHandler {
             throw e;
         }
     }
-
 }

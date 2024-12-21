@@ -28,7 +28,7 @@ public class Order implements EntityHandler {
         System.out.println("4. Find Order by ID");
         System.out.println("5. Mark Order as Completed");
         System.out.println("6. Update Order Quantity");
-        System.out.println("0. Exit");
+        System.out.println("7. Press 'e' or 'Esc' to exit");
     }
 
     @Override
@@ -64,6 +64,7 @@ public class Order implements EntityHandler {
             this.name = scanner.nextLine();
             System.out.print("Enter Item ID: ");
             this.itemId = scanner.nextInt();
+            scanner.nextLine();
 
             if (!fetchItemByID(connection, this.itemId)) {
                 System.out.println("Item not found. Please enter a valid Item ID.");
@@ -72,6 +73,7 @@ public class Order implements EntityHandler {
 
             System.out.print("Enter Receiver ID: ");
             this.receiverID = scanner.nextInt();
+            scanner.nextLine();
 
             if (!fetchReceiverById(connection, this.receiverID)) {
                 System.out.println("Receiver not found. Please enter a valid Receiver ID.");
@@ -83,6 +85,7 @@ public class Order implements EntityHandler {
             scanner.nextLine(); // Consume newline
 
             if (!getRawMaterialInformation(connection, this.quantity, this.itemId)) {
+                System.out.println("Failed to add the order.");
                 return;
             }
 
@@ -301,24 +304,48 @@ public class Order implements EntityHandler {
     }
 
     private boolean getRawMaterialInformation(Connection connection, int quantity, int itemId) {
-        try (PreparedStatement pstmt = connection.prepareStatement("SELECT * FROM raw_materials WHERE id = ?")) {
+        try (PreparedStatement pstmt = connection.prepareStatement("SELECT * FROM items_raw_materials WHERE itemId = ?")) {
             pstmt.setInt(1, itemId);
             try (ResultSet rs = pstmt.executeQuery()) {
-                if (rs.next()) {
-                    int availableQuantity = rs.getInt("quantity");
-                    if (quantity > availableQuantity) {
-                        System.out.println("Insufficient raw materials ("+itemId+") for the order.");
+                while (rs.next()) {
+                    if (!findRawMaterialById(connection,rs.getInt("raw_material_id"))){
                         return false;
                     }
-                } else {
-                    System.out.println("Raw materials for the item not found.");
-                    return false;
                 }
+                return true;
             }
         } catch (SQLException e) {
             System.out.println("Error checking raw materials: " + e.getMessage());
         }
         return true;
+    }
+
+    public Boolean findRawMaterialById(Connection connection,int RawMaterial_id) {
+        String selectQuery = "SELECT * FROM raw_materials WHERE id = ?";
+        try (PreparedStatement stmt = connection.prepareStatement(selectQuery)) {
+            stmt.setInt(1, RawMaterial_id);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    do {
+                        String name = rs.getString("name");
+                        int quantity = rs.getInt("quantity");
+                        if (quantity < this.quantity) {
+                            System.out.println("Not enough "+name+"("+RawMaterial_id+")"+" in inventory");
+                            return false;
+                        }else{
+                            updateRawMaterialQuantity(connection, RawMaterial_id, this.quantity);
+                            return true;
+                        }
+                    } while (rs.next());
+                } else {
+                    System.out.println("No raw_materials found with ID = " + RawMaterial_id);
+                return false;
+                }
+            }
+        } catch (SQLException e) {
+            System.out.println("Error finding raw_materials: " + e.getMessage());
+        }
+        return false;
     }
 
     public void updateOrderQuantity(Connection connection, Scanner scanner) {
@@ -410,6 +437,7 @@ public class Order implements EntityHandler {
             scanner.nextLine(); // Clear buffer in case of invalid input
         }
     }
+
     private void updateRawMaterialQuantity(Connection connection, int rawMaterialId, int quantity) {
         String updateRawMaterialQuery = "UPDATE raw_materials SET quantity = quantity - ? WHERE id = ?";
 

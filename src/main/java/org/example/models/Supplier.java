@@ -64,7 +64,7 @@ public class Supplier extends User {
         System.out.println("2. Delete Supplier");
         System.out.println("3. View All Suppliers");
         System.out.println("4. Find Supplier by ID");
-        System.out.println("5. Exit");
+        System.out.println("5. Press 'e' or 'Esc' to exit");
     }
 
     @Override
@@ -75,7 +75,6 @@ public class Supplier extends User {
                 case 2 -> deleteUser(connection, scanner);
                 case 3 -> findAll(connection);
                 case 4 -> findById(connection, scanner);
-                case 5 -> System.out.println("Exiting Supplier Management...");
                 default -> System.out.println("Invalid choice. Try again.");
             }
         } catch (SQLException e) {
