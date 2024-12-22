@@ -93,12 +93,13 @@ public class Order implements EntityHandler {
             this.isFullFilled = scanner.nextInt();
             scanner.nextLine();
 
+
             String insertOrderQuery = """
                 INSERT INTO orders (name, itemId, receiverId, fulfilled, quantity) 
                 VALUES (?, ?, ?, ?, ?)
             """;
 
-            try (PreparedStatement pstmt = connection.prepareStatement(insertOrderQuery)) {
+            try (PreparedStatement pstmt = connection.prepareStatement(insertOrderQuery, Statement.RETURN_GENERATED_KEYS)) {
                 pstmt.setString(1, this.name);
                 pstmt.setInt(2, this.itemId);
                 pstmt.setInt(3, this.receiverID);
@@ -108,6 +109,13 @@ public class Order implements EntityHandler {
                 int rowsInserted = pstmt.executeUpdate();
                 if (rowsInserted > 0) {
                     System.out.println("Order added successfully!");
+                    try (ResultSet generatedKeys = pstmt.getGeneratedKeys()) {
+                        id = generatedKeys.getInt(1);
+                        if (isFullFilled == 1) {
+                            isFullFilled = 0;
+                            ifFullfilled(connection);
+                        }
+                    }
                 } else {
                     System.out.println("Failed to add the order.");
                 }
@@ -194,6 +202,45 @@ public class Order implements EntityHandler {
             }
         } catch (SQLException e) {
             System.out.println("Error finding Order: " + e.getMessage());
+        }
+    }
+
+    public void ifFullfilled(Connection connection) throws SQLException {
+        String selectQuery = "SELECT * FROM orders WHERE orderId = ?";
+
+        try (PreparedStatement stmt = connection.prepareStatement(selectQuery)) {
+            stmt.setInt(1, id);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    String insertOrderQuery = """
+                            INSERT INTO finish_goods (name, itemId, receiverId, fulfilled, quantity) 
+                            VALUES (?, ?, ?, ?, ?)
+                        """;
+
+                    try (PreparedStatement pstmt = connection.prepareStatement(insertOrderQuery)) {
+                        pstmt.setString(1, this.name);
+                        pstmt.setInt(2, this.itemId);
+                        pstmt.setInt(3, this.receiverID);
+                        pstmt.setInt(4, this.isFullFilled);
+                        pstmt.setInt(5, this.quantity);
+                        pstmt.executeUpdate();
+                    }
+
+                    String deleteOrderStatement = "DELETE FROM orders WHERE orderId = ?";
+
+                    try (PreparedStatement pstmt = connection.prepareStatement(deleteOrderStatement)) {
+                        pstmt.setInt(1, id);
+                        pstmt.executeUpdate();
+                    }
+
+                    System.out.println("Automatically Added to the Finishgoods.");
+                } else {
+                    System.out.println("No Order found with ID = " + id);
+                    return;
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
         }
     }
 
