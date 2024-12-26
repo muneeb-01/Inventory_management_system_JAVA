@@ -25,7 +25,6 @@ public class Main {
             processMainMenuChoice(userInput, connection, scanner);
         }
     }
-
     static void showMainMenu() {
 
         System.out.printf("%n %50s %n ","Supply Chain Management System");
@@ -38,18 +37,30 @@ public class Main {
         System.out.println("6. Finish Goods");
         System.out.println("Press 'Esc' or 'e' to Exit");
     }
-
     static void processMainMenuChoice(int choice, Connection connection, Scanner scanner) {
         EntityHandler entityHandler = null;
 
         switch (choice) {
-            case 1 -> entityHandler = new Supplier(connection);
-            case 2 -> entityHandler = new Receiver(connection);
-            case 3 -> entityHandler = new Raw_Material();
-            case 4 -> entityHandler = new Items();
-            case 5 -> entityHandler = new Order(connection);
-            case 6 -> entityHandler = new FinishGoods(connection);
-            default -> System.out.println("Invalid choice. Please try again.");
+            case 1 : entityHandler = new Supplier(connection); break;
+            case 2 : entityHandler = new Receiver(connection); break;
+            case 3 : {
+                new Supplier(connection);
+                new Raw_Material(connection);
+                break;
+            }
+            case 4 : {
+                new Raw_Material(connection);
+                entityHandler = new Items(connection);
+                break;
+            }
+            case 5 : {
+                new Raw_Material(connection);
+                new Items(connection);
+                entityHandler = new Order(connection);
+                break;
+            }
+            case 6 : entityHandler = new FinishGoods(connection); break;
+            default : System.out.println("Invalid choice. Please try again.");
         }
         if (entityHandler != null) {
             runEntityMenu(entityHandler, connection, scanner);
@@ -63,7 +74,6 @@ public class Main {
             }
         }
     }
-
     static void runEntityMenu(EntityHandler entityHandler, Connection connection, Scanner scanner) {
         while (true) {
             entityHandler.showMenu();
@@ -75,18 +85,23 @@ public class Main {
             entityHandler.handleChoice(choice, connection, scanner);
         }
     }
-
     static int getUserInput(Scanner scanner) {
         System.out.print("Enter your choice (or press 'Esc'/'e' to exit): ");
-        String input = scanner.nextLine();
+        String input = scanner.nextLine().trim();
+
         if (input.equalsIgnoreCase("e") || input.equalsIgnoreCase("esc")) {
             return -1;
         }
+
+        if (input.isEmpty()) {
+            System.out.println("Input cannot be empty. Please enter a valid number.");
+            return 0;}
+
         try {
             return Integer.parseInt(input);
         } catch (NumberFormatException e) {
-            System.out.println("Invalid input. Please enter a number.");
-            return 0; // Return 0 for invalid input to keep the loop running
+            System.out.println("Invalid input. Please enter a valid number.");
+            return 0;
         }
     }
 }

@@ -6,11 +6,10 @@ import java.util.Scanner;
 public class Items implements EntityHandler {
     private int itemId;
     private String name;
-
     private int pricePerUnit;
 
-    public String getName() {
-        return name;
+    public Items(Connection connection){
+        createTablesIfNotExists(connection);
     }
 
     @Override
@@ -22,7 +21,6 @@ public class Items implements EntityHandler {
         System.out.println("4. Find Item by ID");
         System.out.println("5. Press 'e' or 'Esc' to exit");
     }
-
     @Override
     public void handleChoice(int choice, Connection connection, Scanner scanner) {
         try {
@@ -38,14 +36,45 @@ public class Items implements EntityHandler {
             System.out.println("Error: " + e.getMessage());
         }
     }
+    public int getValidInt(Scanner scanner) {
+        int id = -1;
+        boolean validInput = false;
 
+        // Keep asking for the ID until valid input is received
+        while (!validInput) {
+            try {
+                // Read the integer input
+                id = Integer.parseInt(scanner.nextLine().trim());
+
+                // Check if ID is valid (assuming IDs should be positive integers)
+                if (id <= 0) {
+                    System.out.println("must be a positive number.");
+                } else {
+                    validInput = true; // Valid input, exit the loop
+                }
+            } catch (NumberFormatException e) {
+                // Handle invalid input
+                System.out.println("Error: Invalid input. Please enter a valid integer.");
+            }
+        }
+
+        return id; // Return the validated ID
+    }
+    public String getValidString(Scanner scanner) {
+        String name;
+        while (true) {
+            name = scanner.nextLine().trim();
+            if (name.isEmpty()) {
+                System.out.println("Error: Field cannot be empty.");
+            } else {
+                break; // Valid name
+            }
+        }
+        return name;
+    }
     public void addItem(Connection connection, Scanner scanner) throws SQLException {
-        createTablesIfNotExists(connection);
-
         System.out.print("Enter Number of Constituents of Item: ");
-        int length = scanner.nextInt();
-        scanner.nextLine();
-
+        int length = getValidInt(scanner);
         int[] rawMaterialIds = getRawMaterialIds(scanner, length);
 
         if (!validateRawMaterials(connection, rawMaterialIds)) {
@@ -59,10 +88,7 @@ public class Items implements EntityHandler {
         insertItemIntoDatabase(connection);
         linkRawMaterialsToItem(connection, rawMaterialIds, itemId);
     }
-
     public void deleteItems(Connection connection, Scanner scanner) throws SQLException {
-        createTablesIfNotExists(connection);
-
         int itemIdToDelete = getItemId(scanner);
 
         if (itemIdToDelete != -1) {
@@ -71,10 +97,7 @@ public class Items implements EntityHandler {
             System.out.println("Invalid Item ID.");
         }
     }
-
     public void findAll(Connection connection) throws SQLException {
-        createTablesIfNotExists(connection);
-
         String selectAllQuery = "SELECT * FROM items";
         try (Statement stmt = connection.createStatement();
              ResultSet rs = stmt.executeQuery(selectAllQuery)) {
@@ -82,10 +105,7 @@ public class Items implements EntityHandler {
             displayItems(rs);
         }
     }
-
     public void findById(Connection connection, Scanner scanner) throws SQLException {
-        createTablesIfNotExists(connection);
-
         int itemIdToFind = getItemId(scanner);
 
         if (itemIdToFind != -1) {
@@ -100,8 +120,7 @@ public class Items implements EntityHandler {
             System.out.println("Invalid Item ID.");
         }
     }
-
-    private void createTablesIfNotExists(Connection connection) throws SQLException {
+    private void createTablesIfNotExists(Connection connection) {
         String createItemsTable = """
                 CREATE TABLE IF NOT EXISTS items (
                     itemId INTEGER PRIMARY KEY,
@@ -124,19 +143,18 @@ public class Items implements EntityHandler {
         try (Statement stmt = connection.createStatement()) {
             stmt.execute(createItemsTable);
             stmt.execute(createItemsRawMaterialsTable);
+        }catch (SQLException e){
+            System.out.println("Error creating Items Table.");
         }
     }
-
     private int[] getRawMaterialIds(Scanner scanner, int length) {
         int[] rawMaterialIds = new int[length];
         for (int i = 0; i < length; i++) {
             System.out.print("Enter the Raw Material " + (i + 1) + " ID: ");
-            rawMaterialIds[i] = scanner.nextInt();
-            scanner.nextLine();
+            rawMaterialIds[i] = getValidInt(scanner);
         }
         return rawMaterialIds;
     }
-
     private boolean validateRawMaterials(Connection connection, int[] rawMaterialIds) throws SQLException {
         for (int rawMaterialId : rawMaterialIds) {
             if (!existsInTable(connection, "raw_materials", "id", rawMaterialId)) {
@@ -145,19 +163,14 @@ public class Items implements EntityHandler {
         }
         return true;
     }
-
     private String getItemName(Scanner scanner) {
         System.out.print("Enter the Item Name: ");
-        return scanner.nextLine();
+        return getValidString(scanner);
     }
-
     private int getPricePerUnit(Scanner scanner) {
         System.out.print("Enter the Item's Price per Unit: ");
-        int price_per_unit = scanner.nextInt();
-        scanner.nextLine();
-        return price_per_unit;
+        return getValidInt(scanner);
     }
-
     private void insertItemIntoDatabase(Connection connection) throws SQLException {
         String insertItemQuery = "INSERT INTO items (name, price_per_unit) VALUES (?, ?)";
         try (PreparedStatement stmt = connection.prepareStatement(insertItemQuery, Statement.RETURN_GENERATED_KEYS)) {
@@ -180,7 +193,6 @@ public class Items implements EntityHandler {
             }
         }
     }
-
     private void linkRawMaterialsToItem(Connection connection, int[] rawMaterialIds,int itemId) throws SQLException {
         String checkQuery = "SELECT COUNT(*) FROM items_raw_materials WHERE itemId = ? AND raw_material_id = ?";
         String insertQuery = "INSERT INTO items_raw_materials (itemId, raw_material_id) VALUES (?, ?)";
@@ -205,14 +217,10 @@ public class Items implements EntityHandler {
             }
         }
     }
-
     private int getItemId(Scanner scanner) {
         System.out.print("Enter Item ID: ");
-        int Id = scanner.nextInt();
-        scanner.nextLine();
-        return Id;
+        return getValidInt(scanner);
     }
-
     private void deleteItemFromDatabase(Connection connection, int itemIdToDelete) throws SQLException {
         String deleteQuery = "DELETE FROM items WHERE itemId = ?";
         try (PreparedStatement stmt = connection.prepareStatement(deleteQuery)) {
@@ -225,7 +233,6 @@ public class Items implements EntityHandler {
             }
         }
     }
-
     private void displayItems(ResultSet rs) throws SQLException {
         System.out.println("Item ID\tName\tPrice per Unit");
         System.out.println("------------------------------------------------");
@@ -237,7 +244,6 @@ public class Items implements EntityHandler {
             System.out.printf("%d\t%-10s\t%d\n", id, name, price);
         }
     }
-
     private void displayItemDetails(ResultSet rs) throws SQLException {
         if (rs.next()) {
             System.out.println("Item ID\tName\t\tPrice per Unit");
@@ -253,7 +259,6 @@ public class Items implements EntityHandler {
             System.out.println("No item found with the provided ID.");
         }
     }
-
     private boolean existsInTable(Connection connection, String tableName, String columnName, int value) throws SQLException {
         String query = "SELECT 1 FROM " + tableName + " WHERE " + columnName + " = ?";
         try (PreparedStatement stmt = connection.prepareStatement(query)) {

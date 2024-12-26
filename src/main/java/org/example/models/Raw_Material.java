@@ -10,6 +10,9 @@ public class Raw_Material implements EntityHandler {
     private int supplierId;
     private int price;
 
+    public Raw_Material(Connection connection){
+        createTableIfNotExists(connection);
+    }
     @Override
     public void showMenu() {
         System.out.println("Raw Material Management Menu:");
@@ -21,7 +24,6 @@ public class Raw_Material implements EntityHandler {
         System.out.println("6. Press 'e' or 'Esc' to exit");
         System.out.print("Enter your choice: ");
     }
-
     @Override
     public void handleChoice(int choice, Connection connection, Scanner scanner) {
         try {
@@ -48,21 +50,54 @@ public class Raw_Material implements EntityHandler {
             System.out.println("Error handling choice: " + e.getMessage());
         }
     }
+    public int getValidInt(Scanner scanner) {
+        int id = -1;
+        boolean validInput = false;
 
+        // Keep asking for the ID until valid input is received
+        while (!validInput) {
+            try {
+                // Read the integer input
+                id = Integer.parseInt(scanner.nextLine().trim());
+
+                // Check if ID is valid (assuming IDs should be positive integers)
+                if (id <= 0) {
+                    System.out.println("must be a positive number.");
+                } else {
+                    validInput = true; // Valid input, exit the loop
+                }
+            } catch (NumberFormatException e) {
+                // Handle invalid input
+                System.out.println("Error: Invalid input. Please enter a valid integer.");
+            }
+        }
+
+        return id; // Return the validated ID
+    }
+    public String getValidString(Scanner scanner) {
+        String name;
+        while (true) {
+            name = scanner.nextLine().trim();
+            if (name.isEmpty()) {
+                System.out.println("Error: Field cannot be empty.");
+            } else {
+                break; // Valid name
+            }
+        }
+        return name;
+    }
     public void addRawMaterial(Connection connection, Scanner scanner) throws SQLException {
         System.out.print("Enter Supplier ID: ");
-        int supplierId = scanner.nextInt();
-        scanner.nextLine();
+        int supplierId = getValidInt(scanner);
 
         System.out.print("Enter Name: ");
-        String name = scanner.nextLine();
+        String name = getValidString(scanner);
 
         System.out.print("Enter Price: ");
-        int price = scanner.nextInt();
+        int price = getValidInt(scanner);
 
         System.out.print("Enter Quantity: ");
-        int quantity = scanner.nextInt();
-        scanner.nextLine();
+        int quantity = getValidInt(scanner);
 
         String checkSupplierQuery = "SELECT 1 FROM suppliers WHERE id = ?";
         try (PreparedStatement checkStmt = connection.prepareStatement(checkSupplierQuery)) {
@@ -80,8 +115,6 @@ public class Raw_Material implements EntityHandler {
 
         String insertQuery = "INSERT INTO raw_materials (name, quantity, supplier_id, price) VALUES (?, ?, ?, ?)";
 
-        // Ensure table exists, this should ideally be done once during setup, not every time a new material is added
-        createTableIfNotExists(connection);
 
         // Execute the insert query to add the new raw material
         try (PreparedStatement stmt = connection.prepareStatement(insertQuery)) {
@@ -101,7 +134,6 @@ public class Raw_Material implements EntityHandler {
             throw e;  // Propagate the exception for further handling
         }
     }
-
     private void createTableIfNotExists(Connection connection) {
         String createTableQuery = "CREATE TABLE IF NOT EXISTS raw_materials (" +
                 "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
@@ -117,16 +149,12 @@ public class Raw_Material implements EntityHandler {
             System.out.println("Error creating Raw Material's table");
         }
     }
-
     public void deleteRawMaterial(Connection connection, Scanner scanner) throws SQLException {
-        createTableIfNotExists(connection);
         System.out.print("Enter Supplier ID: ");
-        int SupplierId = scanner.nextInt();
-        scanner.nextLine();
+        int SupplierId = getValidInt(scanner);
 
         System.out.print("Enter Raw Material ID: ");
-        int RawMaterialId = scanner.nextInt();
-        scanner.nextLine();
+        int RawMaterialId = getValidInt(scanner);
 
         try (PreparedStatement stmt = connection.prepareStatement("DELETE FROM raw_materials WHERE supplier_id = ? AND id = ?")) {
             stmt.setInt(1, SupplierId);
@@ -141,9 +169,7 @@ public class Raw_Material implements EntityHandler {
             System.out.println("Error deleting raw material.");
         }
     }
-
     public void findAll(Connection connection) throws SQLException {
-        createTableIfNotExists(connection);
         String selectAllQuery = "SELECT * FROM  raw_materials";
 
         try (Statement stmt = connection.createStatement();
@@ -166,12 +192,9 @@ public class Raw_Material implements EntityHandler {
             throw e;
         }
     }
-
     public void findById(Connection connection, Scanner scanner, String type) throws SQLException {
-        createTableIfNotExists(connection);
         System.out.print("Enter ID : ");
-        id = scanner.nextInt();
-        scanner.nextLine();
+        id = getValidInt(scanner);
 
         String selectQuery = "SELECT * FROM " + type + " WHERE id = ?";
         try (PreparedStatement stmt = connection.prepareStatement(selectQuery)) {
@@ -201,21 +224,16 @@ public class Raw_Material implements EntityHandler {
             throw e;
         }
     }
-
     public void updateRawMaterial(Connection connection, Scanner scanner) throws SQLException {
-        createTableIfNotExists(connection);
         System.out.print("Enter Raw Material ID to update: ");
-        int materialId = scanner.nextInt();
-        scanner.nextLine(); // Consume newline
+        int materialId = getValidInt(scanner);
 
         System.out.print("Enter new Price: ");
-        int newPrice = scanner.nextInt();
+        int newPrice = getValidInt(scanner);
 
         System.out.print("Enter new Quantity: ");
-        int newQuantity = scanner.nextInt();
-        scanner.nextLine(); // Consume newline
+        int newQuantity = getValidInt(scanner);
 
-        // Fetch the current quantity
         String selectQuery = "SELECT quantity FROM raw_materials WHERE id = ?";
         int currentQuantity;
         try (PreparedStatement selectStmt = connection.prepareStatement(selectQuery)) {

@@ -14,7 +14,6 @@ public class FinishGoods implements EntityHandler {
     public FinishGoods(Connection connection) {
         createTablesIfNotExists(connection);
     }
-
     static private void createTablesIfNotExists(Connection connection) {
         String createFinishGoodsTableQuery = """
             CREATE TABLE IF NOT EXISTS finish_goods (
@@ -36,7 +35,6 @@ public class FinishGoods implements EntityHandler {
             System.out.println("Error creating Finish Goods table: " + e.getMessage());
         }
     }
-
     @Override
     public void showMenu() {
         System.out.println("Finish Goods Management Menu:");
@@ -47,7 +45,6 @@ public class FinishGoods implements EntityHandler {
         System.out.println("5. Update Fulfilled Status");
         System.out.println("6. Press 'e' or 'Esc' to exit");
     }
-
     @Override
     public void handleChoice(int choice, Connection connection, Scanner scanner) {
         switch (choice) {
@@ -71,9 +68,31 @@ public class FinishGoods implements EntityHandler {
                 break;
         }
     }
+    public int getValidInt(Scanner scanner) {
+        int id = -1;
+        boolean validInput = false;
 
+        // Keep asking for the ID until valid input is received
+        while (!validInput) {
+            try {
+                // Read the integer input
+                id = Integer.parseInt(scanner.nextLine().trim());
+
+                // Check if ID is valid (assuming IDs should be positive integers)
+                if (id <= 0) {
+                    System.out.println("must be a positive number.");
+                } else {
+                    validInput = true; // Valid input, exit the loop
+                }
+            } catch (NumberFormatException e) {
+                // Handle invalid input
+                System.out.println("Error: Invalid input. Please enter a valid integer.");
+            }
+        }
+
+        return id; // Return the validated ID
+    }
     public void displayOrders(Connection connection) {
-        createTablesIfNotExists(connection);
         String fetchOrdersQuery = "SELECT * FROM finish_goods";
 
         try (Statement stmt = connection.createStatement();
@@ -99,12 +118,9 @@ public class FinishGoods implements EntityHandler {
             System.out.println("Error fetching orders: " + e.getMessage());
         }
     }
-
     public void findById(Connection connection, Scanner scanner, String type) {
-        createTablesIfNotExists(connection);
         System.out.print("Enter ID : ");
-        id = scanner.nextInt();
-        scanner.nextLine();
+        id = getValidInt(scanner);
 
         String selectQuery = "SELECT * FROM " + type + " WHERE orderId = ?";
         try (PreparedStatement stmt = connection.prepareStatement(selectQuery)) {
@@ -134,13 +150,10 @@ public class FinishGoods implements EntityHandler {
             System.out.println("Error finding " + type + ": " + e.getMessage());
         }
     }
-
     public void delivered(Connection connection, Scanner scanner) {
-        createTablesIfNotExists(connection);
 
         System.out.print("Enter Finish Goods ID to mark as delivered: ");
-        int orderId = scanner.nextInt();
-        scanner.nextLine();
+        int orderId = getValidInt(scanner);
 
         String updateQuery = "UPDATE finish_goods SET fulfilled = 1 WHERE orderId = ?";
 
@@ -159,10 +172,8 @@ public class FinishGoods implements EntityHandler {
             System.out.println("Error marking Finish Good as delivered: " + e.getMessage());
         }
     }
-
     // Show delivered items (fulfilled = 0)
     public void showDeliveredItems(Connection connection) {
-        createTablesIfNotExists(connection);
 
         String fetchDeliveredItemsQuery = "SELECT * FROM finish_goods WHERE fulfilled = 1";
 
@@ -189,10 +200,8 @@ public class FinishGoods implements EntityHandler {
             System.out.println("Error fetching delivered items: " + e.getMessage());
         }
     }
-
     // Show remaining finish goods (fulfilled = 1)
     public void showRemainingFinishGoods(Connection connection) {
-        createTablesIfNotExists(connection);
 
         String fetchRemainingItemsQuery = "SELECT * FROM finish_goods WHERE fulfilled = 0";
 
@@ -219,5 +228,4 @@ public class FinishGoods implements EntityHandler {
             System.out.println("Error fetching remaining items: " + e.getMessage());
         }
     }
-
 }

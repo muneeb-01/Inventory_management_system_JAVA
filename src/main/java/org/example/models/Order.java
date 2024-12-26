@@ -30,7 +30,6 @@ public class Order implements EntityHandler {
         System.out.println("6. Update Order Quantity");
         System.out.println("7. Press 'e' or 'Esc' to exit");
     }
-
     @Override
     public void handleChoice(int choice, Connection connection, Scanner scanner) {
         switch (choice) {
@@ -57,14 +56,67 @@ public class Order implements EntityHandler {
                 break;
         }
     }
+    public int getValidInt(Scanner scanner) {
+        int id = -1;
+        boolean validInput = false;
 
+        // Keep asking for the ID until valid input is received
+        while (!validInput) {
+            try {
+                // Read the integer input
+                id = Integer.parseInt(scanner.nextLine().trim());
+
+                // Check if ID is valid (assuming IDs should be positive integers)
+                if (id <= 0) {
+                    System.out.println("must be a positive number.");
+                } else {
+                    validInput = true; // Valid input, exit the loop
+                }
+            } catch (NumberFormatException e) {
+                // Handle invalid input
+                System.out.println("Error: Invalid input. Please enter a valid integer.");
+            }
+        }
+
+        return id; // Return the validated ID
+    }
+    public int getIsFullFilled(Scanner scanner) {
+        int isFullFilled = 0;
+        boolean validInput = false;
+
+        while (!validInput) {
+            try{
+                isFullFilled = Integer.parseInt(scanner.nextLine().trim());
+                if (isFullFilled < 0 || isFullFilled > 1) {
+                    System.out.println("Error: Invalid input. Integer must be 0 or 1.");
+                }else{
+                    validInput = true;
+                }
+
+            } catch (NumberFormatException e) {
+                System.out.println("Error: Enter 1 for true or 0 for false.");
+            }
+        }
+        return isFullFilled;
+    }
+    public String getValidString(Scanner scanner) {
+        String name;
+        while (true) {
+            name = scanner.nextLine().trim();
+            if (name.isEmpty()) {
+                System.out.println("Error: Field cannot be empty.");
+            } else {
+                break; // Valid name
+            }
+        }
+        return name;
+    }
     public void addOrder(Connection connection, Scanner scanner) {
         try {
             System.out.print("Enter Name: ");
-            this.name = scanner.nextLine();
+            this.name = getValidString(scanner);
             System.out.print("Enter Item ID: ");
-            this.itemId = scanner.nextInt();
-            scanner.nextLine();
+            this.itemId = getValidInt(scanner);
 
             if (!fetchItemByID(connection, this.itemId)) {
                 System.out.println("Item not found. Please enter a valid Item ID.");
@@ -72,8 +124,7 @@ public class Order implements EntityHandler {
             }
 
             System.out.print("Enter Receiver ID: ");
-            this.receiverID = scanner.nextInt();
-            scanner.nextLine();
+            this.receiverID = getValidInt(scanner);
 
             if (!fetchReceiverById(connection, this.receiverID)) {
                 System.out.println("Receiver not found. Please enter a valid Receiver ID.");
@@ -81,8 +132,7 @@ public class Order implements EntityHandler {
             }
 
             System.out.print("Enter Quantity: ");
-            this.quantity = scanner.nextInt();
-            scanner.nextLine(); // Consume newline
+            this.quantity = getValidInt(scanner);
 
             if (!getRawMaterialInformation(connection, this.quantity, this.itemId)) {
                 System.out.println("Failed to add the order.");
@@ -90,8 +140,7 @@ public class Order implements EntityHandler {
             }
 
             System.out.print("Is the order fulfilled? (0 = No, 1 = Yes): ");
-            this.isFullFilled = scanner.nextInt();
-            scanner.nextLine();
+            this.isFullFilled = getIsFullFilled(scanner);
 
 
             String insertOrderQuery = """
@@ -127,7 +176,6 @@ public class Order implements EntityHandler {
             scanner.nextLine(); // Clear buffer in case of invalid input
         }
     }
-
     public void deleteOrder(Connection connection, Scanner scanner) {
         System.out.print("Enter Order ID: ");
         int orderID = scanner.nextInt();
@@ -145,7 +193,6 @@ public class Order implements EntityHandler {
             System.out.println("Error deleting Order: " + e.getMessage());
         }
     }
-
     public void displayOrders(Connection connection) {
         String fetchOrdersQuery = "SELECT * FROM orders";
 
@@ -171,7 +218,6 @@ public class Order implements EntityHandler {
             System.out.println("Error fetching orders: " + e.getMessage());
         }
     }
-
     public void findById(Connection connection, Scanner scanner, String type) {
         System.out.print("Enter ID : ");
         id = scanner.nextInt();
@@ -204,7 +250,6 @@ public class Order implements EntityHandler {
             System.out.println("Error finding Order: " + e.getMessage());
         }
     }
-
     public void ifFullfilled(Connection connection) throws SQLException {
         String selectQuery = "SELECT * FROM orders WHERE orderId = ?";
 
@@ -243,7 +288,6 @@ public class Order implements EntityHandler {
             }
         }
     }
-
     public void completion(Connection connection, Scanner scanner) {
         try {
             System.out.print("Enter ID : ");
@@ -288,7 +332,6 @@ public class Order implements EntityHandler {
             e.printStackTrace();
         }
     }
-
     private void createTablesIfNotExists(Connection connection) {
         String createOrdersTableQuery = """
             CREATE TABLE IF NOT EXISTS orders (
@@ -321,7 +364,6 @@ public class Order implements EntityHandler {
             System.out.println("Error creating tables: " + e.getMessage());
         }
     }
-
     private boolean fetchItemByID(Connection connection, int itemId) {
         try (PreparedStatement pstmt = connection.prepareStatement("SELECT * FROM items WHERE itemId = ?")) {
             pstmt.setInt(1, itemId);
@@ -335,7 +377,6 @@ public class Order implements EntityHandler {
         }
         return false;
     }
-
     private boolean fetchReceiverById(Connection connection, int receiverID) {
         try (PreparedStatement pstmt = connection.prepareStatement("SELECT * FROM receiver WHERE id = ?")) {
             pstmt.setInt(1, receiverID);
@@ -349,7 +390,6 @@ public class Order implements EntityHandler {
         }
         return false;
     }
-
     private boolean getRawMaterialInformation(Connection connection, int quantity, int itemId) {
         try (PreparedStatement pstmt = connection.prepareStatement("SELECT * FROM items_raw_materials WHERE itemId = ?")) {
             pstmt.setInt(1, itemId);
@@ -366,7 +406,6 @@ public class Order implements EntityHandler {
         }
         return true;
     }
-
     public Boolean findRawMaterialById(Connection connection,int RawMaterial_id) {
         String selectQuery = "SELECT * FROM raw_materials WHERE id = ?";
         try (PreparedStatement stmt = connection.prepareStatement(selectQuery)) {
@@ -394,7 +433,6 @@ public class Order implements EntityHandler {
         }
         return false;
     }
-
     public void updateOrderQuantity(Connection connection, Scanner scanner) {
         System.out.print("Enter Order ID: ");
         int orderId = scanner.nextInt();
@@ -484,7 +522,6 @@ public class Order implements EntityHandler {
             scanner.nextLine(); // Clear buffer in case of invalid input
         }
     }
-
     private void updateRawMaterialQuantity(Connection connection, int rawMaterialId, int quantity) {
         String updateRawMaterialQuery = "UPDATE raw_materials SET quantity = quantity - ? WHERE id = ?";
 
@@ -496,5 +533,4 @@ public class Order implements EntityHandler {
             System.out.println("Error updating raw material quantity: " + e.getMessage());
         }
     }
-
 }

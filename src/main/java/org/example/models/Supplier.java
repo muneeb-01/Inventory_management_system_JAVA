@@ -6,23 +6,17 @@ import java.sql.SQLException;
 import java.util.Scanner;
 
 public class Supplier extends User {
-
     public Supplier(Connection connection){
         super(connection);
     }
-
     @Override
     public String getTableName() {
         return "suppliers";
     }
-
     @Override
     public void addUser(Connection connection, Scanner scanner) throws SQLException {
-        System.out.print("Enter Supplier Name: ");
-        name = scanner.nextLine();
-
-        System.out.print("Enter Contact Info: ");
-        contactInfo = scanner.nextLine();
+        name = super.getValidName(scanner);
+        contactInfo = super.getValidContactInfo(scanner);
 
         String query = "INSERT INTO suppliers (name, contact) VALUES (?, ?)";
         try (PreparedStatement stmt = connection.prepareStatement(query)) {
@@ -35,12 +29,10 @@ public class Supplier extends User {
             throw e;
         }
     }
-
     @Override
     public void deleteUser(Connection connection, Scanner scanner) throws SQLException {
         System.out.print("Enter Supplier ID to delete: ");
-        int id = scanner.nextInt();
-        scanner.nextLine(); // Consume newline
+        int id = super.getValidId(scanner);
 
         String query = "DELETE FROM suppliers WHERE id = ?";
         try (PreparedStatement stmt = connection.prepareStatement(query)) {
@@ -56,7 +48,6 @@ public class Supplier extends User {
             throw e;
         }
     }
-
     @Override
     public void showMenu() {
         System.out.println("Supplier Management Menu:");
@@ -66,7 +57,6 @@ public class Supplier extends User {
         System.out.println("4. Find Supplier by ID");
         System.out.println("5. Press 'e' or 'Esc' to exit");
     }
-
     @Override
     public void handleChoice(int choice, Connection connection, Scanner scanner) {
         try {
