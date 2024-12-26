@@ -8,10 +8,6 @@ public class Items implements EntityHandler {
     private String name;
     private int pricePerUnit;
 
-    public Items(Connection connection){
-        createTablesIfNotExists(connection);
-    }
-
     @Override
     public void showMenu() {
         System.out.println("Items Management Menu:");
@@ -118,33 +114,6 @@ public class Items implements EntityHandler {
             }
         } else {
             System.out.println("Invalid Item ID.");
-        }
-    }
-    private void createTablesIfNotExists(Connection connection) {
-        String createItemsTable = """
-                CREATE TABLE IF NOT EXISTS items (
-                    itemId INTEGER PRIMARY KEY,
-                    name TEXT NOT NULL,
-                    price_per_unit INTEGER NOT NULL,
-                    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-                """;
-
-        String createItemsRawMaterialsTable = """
-                CREATE TABLE IF NOT EXISTS items_raw_materials (
-                    itemId INTEGER,
-                    raw_material_id INTEGER,
-                    FOREIGN KEY (itemId) REFERENCES items(itemId),
-                    FOREIGN KEY (raw_material_id) REFERENCES raw_materials(id),
-                    PRIMARY KEY (itemId, raw_material_id)
-                )
-                """;
-
-        try (Statement stmt = connection.createStatement()) {
-            stmt.execute(createItemsTable);
-            stmt.execute(createItemsRawMaterialsTable);
-        }catch (SQLException e){
-            System.out.println("Error creating Items Table.");
         }
     }
     private int[] getRawMaterialIds(Scanner scanner, int length) {

@@ -9,10 +9,6 @@ public class Raw_Material implements EntityHandler {
     private int quantity;
     private int supplierId;
     private int price;
-
-    public Raw_Material(Connection connection){
-        createTableIfNotExists(connection);
-    }
     @Override
     public void showMenu() {
         System.out.println("Raw Material Management Menu:");
@@ -132,21 +128,6 @@ public class Raw_Material implements EntityHandler {
         } catch (SQLException e) {
             System.out.println("Error adding raw material: " + e.getMessage());
             throw e;  // Propagate the exception for further handling
-        }
-    }
-    private void createTableIfNotExists(Connection connection) {
-        String createTableQuery = "CREATE TABLE IF NOT EXISTS raw_materials (" +
-                "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
-                "name TEXT NOT NULL, " +
-                "supplier_id INTEGER, " +
-                "price INTEGER, " +
-                "quantity INTEGER NOT NULL, " +
-                "FOREIGN KEY (supplier_id) REFERENCES suppliers(id))";
-
-        try (Statement stmt = connection.createStatement()) {
-            stmt.executeUpdate(createTableQuery);
-        } catch (SQLException e) {
-            System.out.println("Error creating Raw Material's table");
         }
     }
     public void deleteRawMaterial(Connection connection, Scanner scanner) throws SQLException {

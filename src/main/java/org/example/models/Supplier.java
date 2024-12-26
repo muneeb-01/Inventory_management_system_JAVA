@@ -6,9 +6,6 @@ import java.sql.SQLException;
 import java.util.Scanner;
 
 public class Supplier extends User {
-    public Supplier(Connection connection){
-        super(connection);
-    }
     @Override
     public String getTableName() {
         return "suppliers";

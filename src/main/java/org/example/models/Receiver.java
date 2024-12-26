@@ -6,9 +6,6 @@ import java.sql.SQLException;
 import java.util.Scanner;
 
 public class Receiver extends User {
-    public Receiver(Connection connection) {
-        super(connection);
-    }
     @Override
     public String getTableName() {
         return "receiver";

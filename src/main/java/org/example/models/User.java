@@ -10,10 +10,6 @@ public abstract class User implements EntityHandler {
     protected int id;
     protected String name;
     protected String contactInfo;
-
-    User(Connection connection) {
-        createTableIfNotExists(connection);
-    }
     public abstract String getTableName();
     public abstract void addUser(Connection connection, Scanner scanner) throws SQLException;
     public abstract void deleteUser(Connection connection, Scanner scanner) throws SQLException;
@@ -108,19 +104,6 @@ public abstract class User implements EntityHandler {
             // Handle SQL exceptions (e.g., syntax errors, connection issues)
             System.out.println("Error retrieving record: " + e.getMessage());
             throw e; // Re-throw the exception to allow the caller to handle it
-        }
-    }
-    protected void createTableIfNotExists(Connection connection) {
-        String createTableQuery = "CREATE TABLE IF NOT EXISTS " + getTableName() + " (" +
-                "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
-                "name TEXT NOT NULL, " +
-                "contact TEXT NOT NULL)";
-
-        try (PreparedStatement stmt = connection.prepareStatement(createTableQuery)) {
-            stmt.executeUpdate();
-        } catch (SQLException e) {
-            System.out.println("Error creating table for " + getTableName());
-            e.printStackTrace();
         }
     }
     public String getValidName(Scanner scanner) {

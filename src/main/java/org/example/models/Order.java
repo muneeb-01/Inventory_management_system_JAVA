@@ -15,10 +15,6 @@ public class Order implements EntityHandler {
     private int isFullFilled = 0;
     private int id;
 
-    public Order(Connection connection) {
-        createTablesIfNotExists(connection);
-    }
-
     @Override
     public void showMenu() {
         System.out.println("Order Management Menu:");
@@ -330,38 +326,6 @@ public class Order implements EntityHandler {
             }
         } catch (SQLException e) {
             e.printStackTrace();
-        }
-    }
-    private void createTablesIfNotExists(Connection connection) {
-        String createOrdersTableQuery = """
-            CREATE TABLE IF NOT EXISTS orders (
-                orderId INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                itemId INTEGER NOT NULL,
-                receiverId INTEGER NOT NULL,
-                fulfilled INTEGER NOT NULL,
-                quantity INTEGER NOT NULL,
-                createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """;
-
-        String createFinishGoodsTableQuery = """
-            CREATE TABLE IF NOT EXISTS finish_goods (
-                orderId INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                itemId INTEGER NOT NULL,
-                receiverId INTEGER NOT NULL,
-                fulfilled INTEGER NOT NULL,
-                quantity INTEGER NOT NULL,
-                createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """;
-
-        try (Statement stmt = connection.createStatement()) {
-            stmt.execute(createOrdersTableQuery);
-            stmt.execute(createFinishGoodsTableQuery);
-        } catch (SQLException e) {
-            System.out.println("Error creating tables: " + e.getMessage());
         }
     }
     private boolean fetchItemByID(Connection connection, int itemId) {
