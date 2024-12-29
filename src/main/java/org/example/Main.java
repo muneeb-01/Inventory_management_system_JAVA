@@ -48,7 +48,7 @@ public class Main {
             case 3 -> entityHandler = new Raw_Material();
             case 4 -> entityHandler = new Items();
             case 5 -> entityHandler = new Order();
-            case 6 -> entityHandler = new FinishGoods(connection);
+            case 6 -> entityHandler = new FinishGoods();
             default -> System.out.println("Invalid choice. Please try again.");
         }
         if (entityHandler != null) {

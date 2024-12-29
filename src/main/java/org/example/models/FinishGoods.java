@@ -11,30 +11,6 @@ public class FinishGoods implements EntityHandler {
     private int id;
     private int isFullFilled;
 
-    public FinishGoods(Connection connection) {
-        createTablesIfNotExists(connection);
-    }
-    static private void createTablesIfNotExists(Connection connection) {
-        String createFinishGoodsTableQuery = """
-            CREATE TABLE IF NOT EXISTS finish_goods (
-                orderId INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                quantity INTEGER NOT NULL,
-                itemId INTEGER,
-                receiverId INTEGER,
-                fulfilled INTEGER NOT NULL DEFAULT 1, -- 0 = FALSE, 1 = TRUE
-                createdAt DATETIME DEFAULT CURRENT_TIMESTAMP, -- Automatically stores the current time
-                FOREIGN KEY(itemId) REFERENCES items(itemId),
-                FOREIGN KEY(receiverId) REFERENCES receiver(id)
-            )
-        """;
-
-        try (Statement stmt = connection.createStatement()) {
-            stmt.execute(createFinishGoodsTableQuery);
-        } catch (SQLException e) {
-            System.out.println("Error creating Finish Goods table: " + e.getMessage());
-        }
-    }
     @Override
     public void showMenu() {
         System.out.println("Finish Goods Management Menu:");
