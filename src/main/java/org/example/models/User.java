@@ -76,6 +76,7 @@
             }
 
             // Get and validate the ID using the getValidId method
+            System.out.print("Enter "+ getTableName()+ " ID : ");
             int id = getValidId(scanner);
 
             // Construct the SQL query
